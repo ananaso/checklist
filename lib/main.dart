@@ -1,8 +1,23 @@
-import 'package:checklist/item.dart';
+import 'package:checklist/checklist.dart';
+import 'package:checklist/checklist_model.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'database.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        Provider(
+          create: (context) => AppDatabase(),
+          dispose: (context, db) => db.close(),
+        ),
+        ChangeNotifierProvider(create: (context) => ChecklistModel()),
+      ],
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -29,12 +44,25 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<Item> items = List.empty(growable: true);
+  late AppDatabase database;
 
+  late Stream<List<ChecklistItem>> checklistItems;
+
+  // TODO: how do we add a new item?
+  //  When User clicks the plus button
+  //  Then an empty TextField is added after any other items in the list
+  //  Perhaps this first view is the "edit" view of a checklist
   void _addItem() {
-    setState(() {
-      items.add(Item());
-    });
+    // setState(() {
+    //   items.add(Item());
+    // });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    database = Provider.of<AppDatabase>(context, listen: false);
+    checklistItems = database.select(database.checklistItems).watch();
   }
 
   @override
@@ -47,7 +75,7 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         child: Padding(
           padding: EdgeInsetsGeometry.all(32),
-          child: Column(mainAxisAlignment: .center, children: items),
+          child: Checklist(items: checklistItems),
         ),
       ),
       floatingActionButton: FloatingActionButton(

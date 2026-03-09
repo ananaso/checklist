@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 class Item extends StatefulWidget {
-  const Item({super.key});
+  const Item({required this.title, super.key});
+
+  final String title;
 
   @override
   State<Item> createState() => _ItemState();
