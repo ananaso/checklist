@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'database.dart';
 
 class Item extends StatefulWidget {
-  const Item({required this.title, super.key});
+  const Item(this.item, {super.key});
 
-  final String title;
+  final ChecklistItem item;
 
   @override
   State<Item> createState() => _ItemState();
@@ -17,10 +20,24 @@ class _ItemState extends State<Item> {
   bool _focused = false;
   late FocusAttachment _nodeAttachment;
 
+  late AppDatabase database;
+
   void _toggleCheckbox(bool? value) {
     setState(() {
       isChecked = value!;
     });
+  }
+
+  void _onTap() {
+    if (_focused) {
+      _node.unfocus();
+    } else {
+      _node.requestFocus();
+    }
+  }
+
+  void _onSubmitted(String updatedTitle) {
+    database.updateChecklistItem(widget.item.copyWith(title: updatedTitle));
   }
 
   void _handleFocusChange() {
@@ -34,10 +51,11 @@ class _ItemState extends State<Item> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.title);
+    _controller = TextEditingController(text: widget.item.title);
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
     _nodeAttachment = _node.attach(context);
+    database = Provider.of<AppDatabase>(context, listen: false);
   }
 
   @override
@@ -58,17 +76,11 @@ class _ItemState extends State<Item> {
         Expanded(
           child: TextField(
             controller: _controller,
-            enabled: false,
             decoration: _node.hasFocus
                 ? InputDecoration(border: UnderlineInputBorder())
                 : null,
-            onTap: () {
-              if (_focused) {
-                _node.unfocus();
-              } else {
-                _node.requestFocus();
-              }
-            },
+            onTap: _onTap,
+            onSubmitted: _onSubmitted,
             focusNode: _node,
           ),
         ),

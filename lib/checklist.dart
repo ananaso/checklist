@@ -29,7 +29,7 @@ class Checklist extends StatelessWidget {
               List<ChecklistItem> loadedItems = snapshot.data!;
               children.addAll(
                 loadedItems.map((checklistItem) {
-                  return Item(title: checklistItem.title);
+                  return Item(checklistItem);
                 }).toList(),
               );
               children.add(NewItemTextField());

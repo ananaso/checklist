@@ -37,4 +37,10 @@ class AppDatabase extends _$AppDatabase {
   Future<int> addChecklistItem(ChecklistItemsCompanion item) {
     return into(checklistItems).insert(item);
   }
+
+  Future updateChecklistItem(ChecklistItem item) {
+    return (update(checklistItems)..where((ci) => ci.id.equals(item.id))).write(
+      ChecklistItemsCompanion(title: Value(item.title)),
+    );
+  }
 }
