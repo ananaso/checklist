@@ -1,6 +1,7 @@
 import 'package:checklist/database.dart';
 import 'package:checklist/error_text.dart';
 import 'package:checklist/item.dart';
+import 'package:checklist/new_item_text_field.dart';
 import 'package:flutter/material.dart';
 
 class Checklist extends StatelessWidget {
@@ -13,7 +14,7 @@ class Checklist extends StatelessWidget {
     return StreamBuilder(
       stream: items,
       builder: (context, snapshot) {
-        List<Widget> children;
+        List<Widget> children = List.empty(growable: true);
         if (snapshot.hasError) {
           children = [
             ErrorText("Failed to load checklist items: ${snapshot.error}"),
@@ -26,9 +27,12 @@ class Checklist extends StatelessWidget {
               children = [const CircularProgressIndicator()];
             case ConnectionState.active:
               List<ChecklistItem> loadedItems = snapshot.data!;
-              children = loadedItems.map((checklistItem) {
-                return Item(title: checklistItem.title);
-              }).toList();
+              children.addAll(
+                loadedItems.map((checklistItem) {
+                  return Item(title: checklistItem.title);
+                }).toList(),
+              );
+              children.add(NewItemTextField());
             case ConnectionState.done:
               children = [const ErrorText("Connection to database has closed")];
           }

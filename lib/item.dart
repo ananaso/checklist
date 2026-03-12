@@ -34,7 +34,7 @@ class _ItemState extends State<Item> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController();
+    _controller = TextEditingController(text: widget.title);
     _node = FocusNode();
     _node.addListener(_handleFocusChange);
     _nodeAttachment = _node.attach(context);
@@ -58,6 +58,7 @@ class _ItemState extends State<Item> {
         Expanded(
           child: TextField(
             controller: _controller,
+            enabled: false,
             decoration: _node.hasFocus
                 ? InputDecoration(border: UnderlineInputBorder())
                 : null,
