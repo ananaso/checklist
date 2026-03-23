@@ -1,31 +1,7 @@
-### Adding Items
-
-```text
-When all existing checklist items are loaded (given there are any)
-Then an empty TextField is added after any other items in the list
-And no "add new item" button is displayed
-```
-
-```text
-Given User has entered content into the TextField
-When they submit the data
-Then the entered data is persisted to the checklist (and database)
-```
-
-```text
-When User submits while the TextField is empty
-Then nothing is persisted to the database
-And a notice is displayed that items can't be empty
-```
-
-### Editing Items
-
-```text
-ToDo
-```
-
-### Deleting Items
-
-```text
-ToDo
-```
+- [ ] Move items, iterate to using drag handle instead
+- [ ] Edit vs View mode of checklist
+- [ ] List all checklists in app
+- [ ] Create new checklist
+- [ ] Delete checklist
+- [ ] Nest/inherit checklists (i.e. child checklist inherits all items from a parent checklist in
+  view mode)
