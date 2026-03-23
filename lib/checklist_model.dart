@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:checklist/database.dart';
+import 'package:checklist/database/database.dart';
 import 'package:flutter/foundation.dart';
 
 class ChecklistModel extends ChangeNotifier {

@@ -5,4 +5,4 @@ targets:
         options:
           databases:
             # Required: A name for the database and its path
-            app_database: lib/database.dart
+            app_database: lib/database/database.dart

@@ -1,0 +1,12 @@
+-- Unused for now since it seems like triggers don't play well with streams
+
+-- .drift files can contain SQL that is analyzed at compile time.
+-- First, let's import the Dart tables so that we can reference them here.
+import 'tables.dart';
+
+-- Triggers to keep positions valid
+CREATE TRIGGER checklist_items_delete AFTER DELETE ON checklist_items BEGIN
+  UPDATE checklist_items
+  SET position = position - 1
+  WHERE position > old.position;
+END;

@@ -3,7 +3,7 @@ import 'package:checklist/checklist_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'database.dart';
+import 'database/database.dart';
 
 void main() {
   runApp(
@@ -44,25 +44,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late AppDatabase database;
-
-  late Stream<List<ChecklistItem>> checklistItems;
-
-  // TODO: how do we add a new item?
-  //  When User clicks the plus button
-  //  Then an empty TextField is added after any other items in the list
-  //  Perhaps this first view is the "edit" view of a checklist
-  void _addItem() {
-    // setState(() {
-    //   items.add(Item());
-    // });
-  }
-
   @override
   void initState() {
     super.initState();
-    database = Provider.of<AppDatabase>(context, listen: false);
-    checklistItems = database.select(database.checklistItems).watch();
   }
 
   @override
@@ -73,15 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: Padding(
-          padding: EdgeInsetsGeometry.all(32),
-          child: Checklist(items: checklistItems),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addItem,
-        tooltip: 'Add Item',
-        child: const Icon(Icons.add),
+        child: Padding(padding: EdgeInsetsGeometry.all(32), child: Checklist()),
       ),
     );
   }

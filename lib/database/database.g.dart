@@ -22,6 +22,18 @@ class $ChecklistItemsTable extends ChecklistItems
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
@@ -31,19 +43,19 @@ class $ChecklistItemsTable extends ChecklistItems
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
   );
   @override
-  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
-    'created_at',
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
     aliasedName,
-    true,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, title, createdAt];
+  List<GeneratedColumn> get $columns => [id, createdAt, title, position];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -59,6 +71,12 @@ class $ChecklistItemsTable extends ChecklistItems
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
     if (data.containsKey('title')) {
       context.handle(
         _titleMeta,
@@ -67,11 +85,13 @@ class $ChecklistItemsTable extends ChecklistItems
     } else if (isInserting) {
       context.missing(_titleMeta);
     }
-    if (data.containsKey('created_at')) {
+    if (data.containsKey('position')) {
       context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
       );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
     }
     return context;
   }
@@ -86,14 +106,18 @@ class $ChecklistItemsTable extends ChecklistItems
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
       title: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}created_at'],
-      ),
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
     );
   }
 
@@ -105,27 +129,31 @@ class $ChecklistItemsTable extends ChecklistItems
 
 class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
   final int id;
+  final DateTime createdAt;
   final String title;
-  final DateTime? createdAt;
-  const ChecklistItem({required this.id, required this.title, this.createdAt});
+  final int position;
+  const ChecklistItem({
+    required this.id,
+    required this.createdAt,
+    required this.title,
+    required this.position,
+  });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
     map['title'] = Variable<String>(title);
-    if (!nullToAbsent || createdAt != null) {
-      map['created_at'] = Variable<DateTime>(createdAt);
-    }
+    map['position'] = Variable<int>(position);
     return map;
   }
 
   ChecklistItemsCompanion toCompanion(bool nullToAbsent) {
     return ChecklistItemsCompanion(
       id: Value(id),
+      createdAt: Value(createdAt),
       title: Value(title),
-      createdAt: createdAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(createdAt),
+      position: Value(position),
     );
   }
 
@@ -136,8 +164,9 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return ChecklistItem(
       id: serializer.fromJson<int>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       title: serializer.fromJson<String>(json['title']),
-      createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
+      position: serializer.fromJson<int>(json['position']),
     );
   }
   @override
@@ -145,25 +174,29 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
       'title': serializer.toJson<String>(title),
-      'createdAt': serializer.toJson<DateTime?>(createdAt),
+      'position': serializer.toJson<int>(position),
     };
   }
 
   ChecklistItem copyWith({
     int? id,
+    DateTime? createdAt,
     String? title,
-    Value<DateTime?> createdAt = const Value.absent(),
+    int? position,
   }) => ChecklistItem(
     id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
     title: title ?? this.title,
-    createdAt: createdAt.present ? createdAt.value : this.createdAt,
+    position: position ?? this.position,
   );
   ChecklistItem copyWithCompanion(ChecklistItemsCompanion data) {
     return ChecklistItem(
       id: data.id.present ? data.id.value : this.id,
-      title: data.title.present ? data.title.value : this.title,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      title: data.title.present ? data.title.value : this.title,
+      position: data.position.present ? data.position.value : this.position,
     );
   }
 
@@ -171,58 +204,68 @@ class ChecklistItem extends DataClass implements Insertable<ChecklistItem> {
   String toString() {
     return (StringBuffer('ChecklistItem(')
           ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
           ..write('title: $title, ')
-          ..write('createdAt: $createdAt')
+          ..write('position: $position')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, title, createdAt);
+  int get hashCode => Object.hash(id, createdAt, title, position);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is ChecklistItem &&
           other.id == this.id &&
+          other.createdAt == this.createdAt &&
           other.title == this.title &&
-          other.createdAt == this.createdAt);
+          other.position == this.position);
 }
 
 class ChecklistItemsCompanion extends UpdateCompanion<ChecklistItem> {
   final Value<int> id;
+  final Value<DateTime> createdAt;
   final Value<String> title;
-  final Value<DateTime?> createdAt;
+  final Value<int> position;
   const ChecklistItemsCompanion({
     this.id = const Value.absent(),
-    this.title = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.title = const Value.absent(),
+    this.position = const Value.absent(),
   });
   ChecklistItemsCompanion.insert({
     this.id = const Value.absent(),
-    required String title,
     this.createdAt = const Value.absent(),
-  }) : title = Value(title);
+    required String title,
+    required int position,
+  }) : title = Value(title),
+       position = Value(position);
   static Insertable<ChecklistItem> custom({
     Expression<int>? id,
-    Expression<String>? title,
     Expression<DateTime>? createdAt,
+    Expression<String>? title,
+    Expression<int>? position,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (title != null) 'title': title,
       if (createdAt != null) 'created_at': createdAt,
+      if (title != null) 'title': title,
+      if (position != null) 'position': position,
     });
   }
 
   ChecklistItemsCompanion copyWith({
     Value<int>? id,
+    Value<DateTime>? createdAt,
     Value<String>? title,
-    Value<DateTime?>? createdAt,
+    Value<int>? position,
   }) {
     return ChecklistItemsCompanion(
       id: id ?? this.id,
-      title: title ?? this.title,
       createdAt: createdAt ?? this.createdAt,
+      title: title ?? this.title,
+      position: position ?? this.position,
     );
   }
 
@@ -232,11 +275,14 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistItem> {
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
-    if (createdAt.present) {
-      map['created_at'] = Variable<DateTime>(createdAt.value);
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
     }
     return map;
   }
@@ -245,8 +291,9 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistItem> {
   String toString() {
     return (StringBuffer('ChecklistItemsCompanion(')
           ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
           ..write('title: $title, ')
-          ..write('createdAt: $createdAt')
+          ..write('position: $position')
           ..write(')'))
         .toString();
   }
@@ -266,14 +313,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 typedef $$ChecklistItemsTableCreateCompanionBuilder =
     ChecklistItemsCompanion Function({
       Value<int> id,
+      Value<DateTime> createdAt,
       required String title,
-      Value<DateTime?> createdAt,
+      required int position,
     });
 typedef $$ChecklistItemsTableUpdateCompanionBuilder =
     ChecklistItemsCompanion Function({
       Value<int> id,
+      Value<DateTime> createdAt,
       Value<String> title,
-      Value<DateTime?> createdAt,
+      Value<int> position,
     });
 
 class $$ChecklistItemsTableFilterComposer
@@ -290,13 +339,18 @@ class $$ChecklistItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -315,13 +369,18 @@ class $$ChecklistItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get title => $composableBuilder(
     column: $table.title,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
-    column: $table.createdAt,
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -338,11 +397,14 @@ class $$ChecklistItemsTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
-  GeneratedColumn<DateTime> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
 }
 
 class $$ChecklistItemsTableTableManager
@@ -379,22 +441,26 @@ class $$ChecklistItemsTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
                 Value<String> title = const Value.absent(),
-                Value<DateTime?> createdAt = const Value.absent(),
+                Value<int> position = const Value.absent(),
               }) => ChecklistItemsCompanion(
                 id: id,
-                title: title,
                 createdAt: createdAt,
+                title: title,
+                position: position,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
                 required String title,
-                Value<DateTime?> createdAt = const Value.absent(),
+                required int position,
               }) => ChecklistItemsCompanion.insert(
                 id: id,
-                title: title,
                 createdAt: createdAt,
+                title: title,
+                position: position,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

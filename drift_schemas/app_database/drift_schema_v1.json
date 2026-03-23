@@ -32,6 +32,16 @@
             ]
           },
           {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "dateTime",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('CAST(strftime(\\'%s\\', CURRENT_TIMESTAMP) AS INTEGER)')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
             "name": "title",
             "getter_name": "title",
             "moor_type": "string",
@@ -42,10 +52,10 @@
             "dsl_features": []
           },
           {
-            "name": "created_at",
-            "getter_name": "createdAt",
-            "moor_type": "dateTime",
-            "nullable": true,
+            "name": "position",
+            "getter_name": "position",
+            "moor_type": "int",
+            "nullable": false,
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
@@ -64,7 +74,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"checklist_items\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"title\" TEXT NOT NULL, \"created_at\" INTEGER NULL);"
+          "sql": "CREATE TABLE IF NOT EXISTS \"checklist_items\" (\"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"created_at\" INTEGER NOT NULL DEFAULT (CAST(strftime('%s', CURRENT_TIMESTAMP) AS INTEGER)), \"title\" TEXT NOT NULL, \"position\" INTEGER NOT NULL);"
         }
       ]
     }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'database.dart';
+import 'database/database.dart';
 
 class Item extends StatefulWidget {
   const Item(this.item, {super.key});
@@ -36,8 +36,12 @@ class _ItemState extends State<Item> {
     }
   }
 
-  void _onSubmitted(String updatedTitle) {
+  void _updateItem(String updatedTitle) {
     database.updateChecklistItem(widget.item.copyWith(title: updatedTitle));
+  }
+
+  void _deleteItem() {
+    database.deleteChecklistItem(widget.item.id);
   }
 
   void _handleFocusChange() {
@@ -72,7 +76,10 @@ class _ItemState extends State<Item> {
     _nodeAttachment.reparent();
     return Row(
       children: [
-        Checkbox(value: isChecked, onChanged: _toggleCheckbox),
+        // Checkbox(value: isChecked, onChanged: _toggleCheckbox),
+        // IconButton(onPressed: () {}, icon: Icon(Icons.keyboard_arrow_up)),
+        // IconButton(onPressed: () {}, icon: Icon(Icons.keyboard_arrow_down)),
+        Text('[${widget.item.position}] '),
         Expanded(
           child: TextField(
             controller: _controller,
@@ -80,10 +87,11 @@ class _ItemState extends State<Item> {
                 ? InputDecoration(border: UnderlineInputBorder())
                 : null,
             onTap: _onTap,
-            onSubmitted: _onSubmitted,
+            onSubmitted: _updateItem,
             focusNode: _node,
           ),
         ),
+        IconButton(onPressed: _deleteItem, icon: Icon(Icons.delete)),
       ],
     );
   }
