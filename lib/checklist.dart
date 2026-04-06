@@ -29,31 +29,47 @@ class _ChecklistState extends State<Checklist> {
     return StreamBuilder(
       stream: checklistItems,
       builder: (context, snapshot) {
-        List<Widget> children = List.empty(growable: true);
         if (snapshot.hasError) {
-          children = [
-            ErrorText("Failed to load checklist items: ${snapshot.error}"),
-          ];
+          return Center(
+            child: ErrorText(
+              "Failed to load checklist items: ${snapshot.error}",
+            ),
+          );
         } else {
           switch (snapshot.connectionState) {
             case ConnectionState.none:
-              children = [const ErrorText("No connection to database")];
+              return Center(child: ErrorText("No connection to database"));
             case ConnectionState.waiting:
-              children = [const CircularProgressIndicator()];
+              return Center(child: CircularProgressIndicator());
             case ConnectionState.active:
               List<ChecklistItem> loadedItems = snapshot.data!;
-              children.addAll(
-                loadedItems.map((checklistItem) {
-                  return Item(checklistItem, key: ValueKey(checklistItem.id));
+              return ReorderableListView(
+                buildDefaultDragHandles: false,
+                onReorder: (int oldIndex, int newIndex) {
+                  database.reorderChecklistItem(
+                    loadedItems.elementAt(oldIndex).id,
+                    oldIndex,
+                    newIndex,
+                  );
+                },
+                footer: NewItemTextField(loadedItems.length),
+                children: loadedItems.map((checklistItem) {
+                  return ListTile(
+                    key: ValueKey(checklistItem.id),
+                    leading: ReorderableDragStartListener(
+                      index: loadedItems.indexOf(checklistItem),
+                      child: Icon(Icons.drag_handle),
+                    ),
+                    title: Item(key: ValueKey(checklistItem.id), checklistItem),
+                  );
                 }).toList(),
               );
-              children.add(NewItemTextField(loadedItems.length));
             case ConnectionState.done:
-              children = [const ErrorText("Connection to database has closed")];
+              return Center(
+                child: ErrorText("Connection to database has closed"),
+              );
           }
         }
-
-        return Column(mainAxisAlignment: .center, children: children);
       },
     );
   }

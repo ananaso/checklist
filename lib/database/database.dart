@@ -55,6 +55,53 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  Future reorderChecklistItem(int id, int oldPosition, int newPosition) {
+    //   get item's current/old position
+    //   all affected items are those between old and new position
+    //   if new position < old position, increment affected item positions; else decrement
+    //   update item to new position
+    /*
+     * Scene: 5 items on list, dragging middle item (#2, zero-index)
+     * Scenario 1: drag higher on list (lower index)
+     *  - Old position = 2
+     *  - New position = 0
+     *  - Affected items: 0-1
+     *  - Update affected items to be position += 1
+     *  - Update dragged item to new position (0)
+     * Scenario 2: drag lower on list (higher index)
+     *  - Old position = 2
+     *  - New position = 4
+     *  - Affected items: 3-4
+     *  - Update affected items to be position -= 1
+     *  - Update dragged item to new position (4)
+     */
+
+    return transaction(() async {
+      final reorderedItemPosition = selectOnly(checklistItems)
+        ..addColumns([checklistItems.position])
+        ..where(checklistItems.id.equals(id));
+
+      bool movingToLowerPosition = oldPosition > newPosition;
+      int lowerPosition = movingToLowerPosition ? newPosition : oldPosition;
+      int higherPosition = movingToLowerPosition ? oldPosition : newPosition;
+
+      await (update(checklistItems)..where(
+            (ci) => ci.position.isBetweenValues(lowerPosition, higherPosition),
+          ))
+          .write(
+            ChecklistItemsCompanion.custom(
+              position: movingToLowerPosition
+                  ? checklistItems.position + Variable(1)
+                  : checklistItems.position - Variable(1),
+            ),
+          );
+
+      await (update(checklistItems)..where((ci) => ci.id.equals(id))).write(
+        ChecklistItemsCompanion.custom(position: Variable(newPosition)),
+      );
+    });
+  }
+
   Future deleteChecklistItem(int id) {
     return transaction(() async {
       // Helper to get position value of item that will be deleted
