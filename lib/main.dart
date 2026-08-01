@@ -59,6 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         child: Padding(padding: EdgeInsetsGeometry.all(32), child: Checklist()),
       ),
+      floatingActionButton: FloatingActionButton(onPressed: () {}),
     );
   }
 }
