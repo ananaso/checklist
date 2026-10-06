@@ -45,6 +45,26 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Streams all items in list order, re-emitting whenever they change.
+  Stream<List<ChecklistItem>> watchChecklistItems() {
+    return (select(checklistItems)
+          ..orderBy([(ci) => OrderingTerm.asc(ci.position)]))
+        .watch();
+  }
+
+  /// Replaces the whole list with [titles], positioned in the given order.
+  Future<void> replaceChecklistItems(List<String> titles) {
+    return transaction(() async {
+      await delete(checklistItems).go();
+      await batch((b) {
+        b.insertAll(checklistItems, [
+          for (final (i, title) in titles.indexed)
+            ChecklistItemsCompanion.insert(title: title, position: i),
+        ]);
+      });
+    });
+  }
+
   Future<int> addChecklistItem(ChecklistItemsCompanion item) {
     return into(checklistItems).insert(item);
   }

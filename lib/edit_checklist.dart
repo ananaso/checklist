@@ -1,4 +1,6 @@
+import 'package:checklist/database/database.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class EditChecklist extends StatefulWidget {
   const EditChecklist({super.key});
@@ -24,6 +26,13 @@ class _EditChecklistState extends State<EditChecklist> {
     _focusNode.requestFocus();
   }
 
+  Future<void> _save() async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final navigator = Navigator.of(context);
+    await database.replaceChecklistItems(_items);
+    navigator.pop();
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -37,6 +46,7 @@ class _EditChecklistState extends State<EditChecklist> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Edit Checklist'),
+        actions: [TextButton(onPressed: _save, child: const Text('Save'))],
       ),
       body: Padding(
         padding: const EdgeInsets.all(32),

@@ -10,23 +10,46 @@ class Checklist extends StatefulWidget {
 }
 
 class _ChecklistState extends State<Checklist> {
-  late AppDatabase database;
+  late final Stream<List<ChecklistItem>> _items;
 
-  late Future<List<ChecklistItem>> persistedItems;
+  /// Ids of checked items. Local only; not persisted.
+  final Set<int> _checked = {};
 
   @override
   void initState() {
     super.initState();
-    database = Provider.of<AppDatabase>(context, listen: false);
-    persistedItems = database.select(database.checklistItems).get();
+    _items = Provider.of<AppDatabase>(
+      context,
+      listen: false,
+    ).watchChecklistItems();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: persistedItems,
+    return StreamBuilder(
+      stream: _items,
       builder: (context, snapshot) {
-        return Text('hello');
+        final items = snapshot.data;
+        if (items == null) {
+          return const CircularProgressIndicator();
+        }
+        return ListView(
+          children: [
+            for (final item in items)
+              CheckboxListTile(
+                title: Text(item.title),
+                value: _checked.contains(item.id),
+                controlAffinity: ListTileControlAffinity.leading,
+                onChanged: (value) => setState(() {
+                  if (value!) {
+                    _checked.add(item.id);
+                  } else {
+                    _checked.remove(item.id);
+                  }
+                }),
+              ),
+          ],
+        );
       },
     );
   }
