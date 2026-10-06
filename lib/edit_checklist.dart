@@ -152,13 +152,51 @@ class _EditChecklistState extends State<EditChecklist> {
     _edit(() => _items.insert(newIndex, _items.removeAt(oldIndex)));
   }
 
+  /// Whether leaving now would throw anything away. Undoing back to the
+  /// original list leaves the undo stack empty, so that counts as clean.
+  bool get _hasUnsavedChanges =>
+      _undoStack.isNotEmpty || _controller.text.trim().isNotEmpty;
+
+  Future<void> _onPopInvoked(bool didPop, Object? result) async {
+    if (didPop) return;
+    final navigator = Navigator.of(context);
+    await _commitPendingEdit();
+    if (!mounted) return;
+    if (!_hasUnsavedChanges) {
+      navigator.pop();
+      return;
+    }
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard changes?'),
+        content: const Text('Your unsaved changes to this list will be lost.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep editing'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (discard == true) navigator.pop();
+  }
+
+  /// Unfocusing makes a title field being edited commit its text. Focus changes
+  /// are applied in a microtask, so yield before reading the draft.
+  Future<void> _commitPendingEdit() async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
+  }
+
   Future<void> _save() async {
     final database = Provider.of<AppDatabase>(context, listen: false);
     final navigator = Navigator.of(context);
-    // Unfocusing makes a field being edited commit its text. Focus changes are
-    // applied in a microtask, so yield before reading the draft.
-    FocusManager.instance.primaryFocus?.unfocus();
-    await Future<void>.delayed(Duration.zero);
+    await _commitPendingEdit();
     // Text typed in the new item field but never submitted still counts.
     final pending = _controller.text.trim();
     if (pending.isNotEmpty) _items.add(_DraftItem(pending));
@@ -177,63 +215,68 @@ class _EditChecklistState extends State<EditChecklist> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Edit Checklist'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.undo),
-            tooltip: 'Undo',
-            onPressed: _undoStack.isEmpty ? null : _undo,
-          ),
-          IconButton(
-            icon: const Icon(Icons.redo),
-            tooltip: 'Redo',
-            onPressed: _redoStack.isEmpty ? null : _redo,
-          ),
-          TextButton(
-            onPressed: _loaded ? _save : null,
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Expanded(
-              child: ReorderableListView.builder(
-                buildDefaultDragHandles: false,
-                itemCount: _items.length,
-                onReorderItem: _reorder,
-                itemBuilder: (context, index) => ListTile(
-                  key: _items[index].key,
-                  leading: ReorderableDragStartListener(
-                    index: index,
-                    child: const Icon(Icons.drag_handle),
-                  ),
-                  title: _EditableTitle(
-                    title: _items[index].title,
-                    onChanged: (title) => _edit(
-                      () => _items[index] = _items[index].withTitle(title),
+    // Always intercept leaving; _onPopInvoked decides whether to ask first.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: _onPopInvoked,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('Edit Checklist'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.undo),
+              tooltip: 'Undo',
+              onPressed: _undoStack.isEmpty ? null : _undo,
+            ),
+            IconButton(
+              icon: const Icon(Icons.redo),
+              tooltip: 'Redo',
+              onPressed: _redoStack.isEmpty ? null : _redo,
+            ),
+            TextButton(
+              onPressed: _loaded ? _save : null,
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Expanded(
+                child: ReorderableListView.builder(
+                  buildDefaultDragHandles: false,
+                  itemCount: _items.length,
+                  onReorderItem: _reorder,
+                  itemBuilder: (context, index) => ListTile(
+                    key: _items[index].key,
+                    leading: ReorderableDragStartListener(
+                      index: index,
+                      child: const Icon(Icons.drag_handle),
                     ),
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete),
-                    tooltip: 'Delete',
-                    onPressed: () => _edit(() => _items.removeAt(index)),
+                    title: _EditableTitle(
+                      title: _items[index].title,
+                      onChanged: (title) => _edit(
+                        () => _items[index] = _items[index].withTitle(title),
+                      ),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete),
+                      tooltip: 'Delete',
+                      onPressed: () => _edit(() => _items.removeAt(index)),
+                    ),
                   ),
                 ),
               ),
-            ),
-            TextField(
-              controller: _controller,
-              focusNode: _focusNode,
-              onSubmitted: _addItem,
-              decoration: const InputDecoration(labelText: 'New Item'),
-            ),
-          ],
+              TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                onSubmitted: _addItem,
+                decoration: const InputDecoration(labelText: 'New Item'),
+              ),
+            ],
+          ),
         ),
       ),
     );
