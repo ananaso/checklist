@@ -123,9 +123,15 @@ class _ChecklistNameDialogState extends State<_ChecklistNameDialog> {
     text: widget.initialTitle,
   );
 
+  String? _error;
+
   void _submit() {
     final title = _controller.text.trim();
-    if (title.isNotEmpty) Navigator.of(context).pop(title);
+    if (title.isEmpty) {
+      setState(() => _error = 'Name can\'t be empty');
+      return;
+    }
+    Navigator.of(context).pop(title);
   }
 
   @override
@@ -142,8 +148,11 @@ class _ChecklistNameDialogState extends State<_ChecklistNameDialog> {
         controller: _controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
+        onChanged: (_) {
+          if (_error != null) setState(() => _error = null);
+        },
         onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(labelText: 'Name'),
+        decoration: InputDecoration(labelText: 'Name', errorText: _error),
       ),
       actions: [
         TextButton(
