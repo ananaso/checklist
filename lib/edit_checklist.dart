@@ -2,6 +2,15 @@ import 'package:checklist/database/database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+/// A draft item. The key gives each row a stable identity (titles can repeat),
+/// which [ReorderableListView] needs to track rows as they move.
+class _DraftItem {
+  _DraftItem(this.title);
+
+  final String title;
+  final Key key = UniqueKey();
+}
+
 class EditChecklist extends StatefulWidget {
   const EditChecklist({super.key});
 
@@ -11,7 +20,12 @@ class EditChecklist extends StatefulWidget {
 
 class _EditChecklistState extends State<EditChecklist> {
   /// Local draft of the list; nothing is persisted yet.
-  final List<String> _items = [];
+  final List<_DraftItem> _items = [];
+
+  /// Snapshots of [_items] for undo/redo. The items are immutable, so a
+  /// shallow copy of the list is a full snapshot.
+  final List<List<_DraftItem>> _undoStack = [];
+  final List<List<_DraftItem>> _redoStack = [];
 
   /// Saving is disabled until the existing items have loaded, so an early
   /// Save can't overwrite them with an empty list.
@@ -28,26 +42,60 @@ class _EditChecklistState extends State<EditChecklist> {
     ) {
       if (!mounted) return;
       setState(() {
-        _items.addAll(existing.map((item) => item.title));
+        _items.addAll(existing.map((item) => _DraftItem(item.title)));
         _loaded = true;
       });
+    });
+  }
+
+  /// Applies [change] to the draft, recording a snapshot first so it can be
+  /// undone. Any new change invalidates the redo history.
+  void _edit(void Function() change) {
+    setState(() {
+      _undoStack.add(List.of(_items));
+      _redoStack.clear();
+      change();
+    });
+  }
+
+  void _undo() {
+    setState(() {
+      _redoStack.add(List.of(_items));
+      _items
+        ..clear()
+        ..addAll(_undoStack.removeLast());
+    });
+  }
+
+  void _redo() {
+    setState(() {
+      _undoStack.add(List.of(_items));
+      _items
+        ..clear()
+        ..addAll(_redoStack.removeLast());
     });
   }
 
   void _addItem(String text) {
     final title = text.trim();
     if (title.isNotEmpty) {
-      setState(() => _items.add(title));
+      _edit(() => _items.add(_DraftItem(title)));
     }
     _controller.clear();
     // Keep the keyboard open so several items can be entered in a row.
     _focusNode.requestFocus();
   }
 
+  void _reorder(int oldIndex, int newIndex) {
+    _edit(() => _items.insert(newIndex, _items.removeAt(oldIndex)));
+  }
+
   Future<void> _save() async {
     final database = Provider.of<AppDatabase>(context, listen: false);
     final navigator = Navigator.of(context);
-    await database.replaceChecklistItems(_items);
+    await database.replaceChecklistItems([
+      for (final item in _items) item.title,
+    ]);
     navigator.pop();
   }
 
@@ -65,6 +113,16 @@ class _EditChecklistState extends State<EditChecklist> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Edit Checklist'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.undo),
+            tooltip: 'Undo',
+            onPressed: _undoStack.isEmpty ? null : _undo,
+          ),
+          IconButton(
+            icon: const Icon(Icons.redo),
+            tooltip: 'Redo',
+            onPressed: _redoStack.isEmpty ? null : _redo,
+          ),
           TextButton(
             onPressed: _loaded ? _save : null,
             child: const Text('Save'),
@@ -76,14 +134,21 @@ class _EditChecklistState extends State<EditChecklist> {
         child: Column(
           children: [
             Expanded(
-              child: ListView.builder(
+              child: ReorderableListView.builder(
+                buildDefaultDragHandles: false,
                 itemCount: _items.length,
+                onReorderItem: _reorder,
                 itemBuilder: (context, index) => ListTile(
-                  title: Text(_items[index]),
+                  key: _items[index].key,
+                  leading: ReorderableDragStartListener(
+                    index: index,
+                    child: const Icon(Icons.drag_handle),
+                  ),
+                  title: Text(_items[index].title),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     tooltip: 'Delete',
-                    onPressed: () => setState(() => _items.removeAt(index)),
+                    onPressed: () => _edit(() => _items.removeAt(index)),
                   ),
                 ),
               ),

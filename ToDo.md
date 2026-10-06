@@ -1,7 +1,3 @@
-1. Reorder locally, then save persists
-2. Undo/redo button?
-
-
 - [ ] Move items, iterate to using drag handle instead
 - [ ] Edit vs View mode of checklist
 - [ ] List all checklists in app
