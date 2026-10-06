@@ -5,10 +5,72 @@ import 'package:provider/provider.dart';
 /// A draft item. The key gives each row a stable identity (titles can repeat),
 /// which [ReorderableListView] needs to track rows as they move.
 class _DraftItem {
-  _DraftItem(this.title);
+  _DraftItem(this.title, [Key? key]) : key = key ?? UniqueKey();
 
   final String title;
-  final Key key = UniqueKey();
+  final Key key;
+
+  /// A copy with a new title but the same row identity.
+  _DraftItem withTitle(String title) => _DraftItem(title, key);
+}
+
+/// An item title that edits in place. Reports changes on submit or when the
+/// field loses focus, so a typing session becomes one undo step.
+class _EditableTitle extends StatefulWidget {
+  const _EditableTitle({required this.title, required this.onChanged});
+
+  final String title;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_EditableTitle> createState() => _EditableTitleState();
+}
+
+class _EditableTitleState extends State<_EditableTitle> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.title,
+  );
+  late final FocusNode _focusNode = FocusNode()..addListener(_onFocusChange);
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus) _commit();
+  }
+
+  void _commit() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) {
+      // Blank titles aren't allowed; fall back to the current title.
+      _controller.text = widget.title;
+    } else if (text != widget.title) {
+      widget.onChanged(text);
+    }
+  }
+
+  @override
+  void didUpdateWidget(_EditableTitle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The title changed from outside (e.g. undo/redo), so show it.
+    if (widget.title != oldWidget.title && _controller.text != widget.title) {
+      _controller.text = widget.title;
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      onSubmitted: (_) => _commit(),
+      decoration: const InputDecoration(border: InputBorder.none),
+    );
+  }
 }
 
 class EditChecklist extends StatefulWidget {
@@ -93,6 +155,10 @@ class _EditChecklistState extends State<EditChecklist> {
   Future<void> _save() async {
     final database = Provider.of<AppDatabase>(context, listen: false);
     final navigator = Navigator.of(context);
+    // Unfocusing makes a field being edited commit its text. Focus changes are
+    // applied in a microtask, so yield before reading the draft.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(Duration.zero);
     await database.replaceChecklistItems([
       for (final item in _items) item.title,
     ]);
@@ -144,7 +210,12 @@ class _EditChecklistState extends State<EditChecklist> {
                     index: index,
                     child: const Icon(Icons.drag_handle),
                   ),
-                  title: Text(_items[index].title),
+                  title: _EditableTitle(
+                    title: _items[index].title,
+                    onChanged: (title) => _edit(
+                      () => _items[index] = _items[index].withTitle(title),
+                    ),
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete),
                     tooltip: 'Delete',
