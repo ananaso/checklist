@@ -1,5 +1,6 @@
 import 'package:checklist/checklist.dart';
 import 'package:checklist/checklist_model.dart';
+import 'package:checklist/edit_checklist.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -55,6 +56,15 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            tooltip: 'Edit list',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (context) => const EditChecklist()),
+            ),
+          ),
+        ],
       ),
       body: Center(
         child: Padding(padding: EdgeInsetsGeometry.all(32), child: Checklist()),
