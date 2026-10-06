@@ -159,6 +159,9 @@ class _EditChecklistState extends State<EditChecklist> {
     // applied in a microtask, so yield before reading the draft.
     FocusManager.instance.primaryFocus?.unfocus();
     await Future<void>.delayed(Duration.zero);
+    // Text typed in the new item field but never submitted still counts.
+    final pending = _controller.text.trim();
+    if (pending.isNotEmpty) _items.add(_DraftItem(pending));
     await database.replaceChecklistItems([
       for (final item in _items) item.title,
     ]);
