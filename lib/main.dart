@@ -1,10 +1,9 @@
-import 'package:checklist/checklist.dart';
+import 'package:checklist/checklist_view.dart';
 import 'package:checklist/edit_checklist.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'database/database.dart' as db;
-import 'database/database.dart' show AppDatabase;
+import 'database/database.dart';
 
 void main() {
   runApp(
@@ -45,7 +44,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   /// The list being shown. Until lists can be created/chosen, it's the first.
-  late final Future<db.Checklist> _checklist = Provider.of<AppDatabase>(
+  late final Future<Checklist> _checklist = Provider.of<AppDatabase>(
     context,
     listen: false,
   ).getFirstChecklist();
@@ -79,7 +78,7 @@ class _MyHomePageState extends State<MyHomePage> {
               padding: const EdgeInsets.all(32),
               child: checklist == null
                   ? const CircularProgressIndicator()
-                  : Checklist(checklistId: checklist.id),
+                  : ChecklistView(checklistId: checklist.id),
             ),
           ),
           floatingActionButton: FloatingActionButton(onPressed: () {}),

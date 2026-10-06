@@ -2,16 +2,16 @@ import 'package:checklist/database/database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class Checklist extends StatefulWidget {
-  const Checklist({super.key, required this.checklistId});
+class ChecklistView extends StatefulWidget {
+  const ChecklistView({super.key, required this.checklistId});
 
   final int checklistId;
 
   @override
-  State<Checklist> createState() => _ChecklistState();
+  State<ChecklistView> createState() => _ChecklistViewState();
 }
 
-class _ChecklistState extends State<Checklist> {
+class _ChecklistViewState extends State<ChecklistView> {
   late final Stream<List<ChecklistItem>> _items;
 
   /// Ids of checked items. Local only; not persisted.
