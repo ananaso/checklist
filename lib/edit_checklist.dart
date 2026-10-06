@@ -13,8 +13,26 @@ class _EditChecklistState extends State<EditChecklist> {
   /// Local draft of the list; nothing is persisted yet.
   final List<String> _items = [];
 
+  /// Saving is disabled until the existing items have loaded, so an early
+  /// Save can't overwrite them with an empty list.
+  bool _loaded = false;
+
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    Provider.of<AppDatabase>(context, listen: false).getChecklistItems().then((
+      existing,
+    ) {
+      if (!mounted) return;
+      setState(() {
+        _items.addAll(existing.map((item) => item.title));
+        _loaded = true;
+      });
+    });
+  }
 
   void _addItem(String text) {
     final title = text.trim();
@@ -46,7 +64,12 @@ class _EditChecklistState extends State<EditChecklist> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Edit Checklist'),
-        actions: [TextButton(onPressed: _save, child: const Text('Save'))],
+        actions: [
+          TextButton(
+            onPressed: _loaded ? _save : null,
+            child: const Text('Save'),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(32),

@@ -47,9 +47,16 @@ class AppDatabase extends _$AppDatabase {
 
   /// Streams all items in list order, re-emitting whenever they change.
   Stream<List<ChecklistItem>> watchChecklistItems() {
-    return (select(checklistItems)
-          ..orderBy([(ci) => OrderingTerm.asc(ci.position)]))
-        .watch();
+    return (select(
+      checklistItems,
+    )..orderBy([(ci) => OrderingTerm.asc(ci.position)])).watch();
+  }
+
+  /// Fetches all items once, in list order.
+  Future<List<ChecklistItem>> getChecklistItems() {
+    return (select(
+      checklistItems,
+    )..orderBy([(ci) => OrderingTerm.asc(ci.position)])).get();
   }
 
   /// Replaces the whole list with [titles], positioned in the given order.
