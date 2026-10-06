@@ -1,5 +1,4 @@
 import 'package:checklist/checklist.dart';
-import 'package:checklist/checklist_model.dart';
 import 'package:checklist/edit_checklist.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,7 +13,6 @@ void main() {
           create: (context) => AppDatabase(),
           dispose: (context, db) => db.close(),
         ),
-        ChangeNotifierProvider(create: (context) => ChecklistModel()),
       ],
       child: MyApp(),
     ),
