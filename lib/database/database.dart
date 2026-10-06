@@ -7,7 +7,7 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [ChecklistItems]) // , include: {'triggers.drift'}
+@DriftDatabase(tables: [Checklists, ChecklistItems]) // , include: {'triggers.drift'}
 class AppDatabase extends _$AppDatabase {
   // After generating code, this class needs to define a `schemaVersion` getter
   // and a constructor telling drift where the database should be stored.
@@ -21,6 +21,7 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration {
     return MigrationStrategy(
       beforeOpen: (openingDetails) async {
+        await customStatement('PRAGMA foreign_keys = ON');
         // Reset the DB whenever in debug mode
         if (kDebugMode) {
           final m = Migrator(this);
@@ -28,6 +29,12 @@ class AppDatabase extends _$AppDatabase {
             await m.deleteTable(table.actualTableName);
             await m.createTable(table);
           }
+        }
+        // Until there's UI for creating lists, make sure one always exists.
+        if (await select(checklists).get().then((l) => l.isEmpty)) {
+          await into(checklists).insert(
+            ChecklistsCompanion.insert(title: 'My Checklist'),
+          );
         }
       },
     );
@@ -45,28 +52,44 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  /// Streams all items in list order, re-emitting whenever they change.
-  Stream<List<ChecklistItem>> watchChecklistItems() {
-    return (select(
-      checklistItems,
-    )..orderBy([(ci) => OrderingTerm.asc(ci.position)])).watch();
+  /// The first checklist (the only one, until lists can be created).
+  Future<Checklist> getFirstChecklist() {
+    return (select(checklists)
+          ..orderBy([(c) => OrderingTerm.asc(c.id)])
+          ..limit(1))
+        .getSingle();
   }
 
-  /// Fetches all items once, in list order.
-  Future<List<ChecklistItem>> getChecklistItems() {
-    return (select(
-      checklistItems,
-    )..orderBy([(ci) => OrderingTerm.asc(ci.position)])).get();
+  /// Streams a checklist's items in list order, re-emitting on changes.
+  Stream<List<ChecklistItem>> watchChecklistItems(int checklistId) {
+    return (select(checklistItems)
+          ..where((ci) => ci.checklistId.equals(checklistId))
+          ..orderBy([(ci) => OrderingTerm.asc(ci.position)]))
+        .watch();
   }
 
-  /// Replaces the whole list with [titles], positioned in the given order.
-  Future<void> replaceChecklistItems(List<String> titles) {
+  /// Fetches a checklist's items once, in list order.
+  Future<List<ChecklistItem>> getChecklistItems(int checklistId) {
+    return (select(checklistItems)
+          ..where((ci) => ci.checklistId.equals(checklistId))
+          ..orderBy([(ci) => OrderingTerm.asc(ci.position)]))
+        .get();
+  }
+
+  /// Replaces a checklist's items with [titles], positioned in the given order.
+  Future<void> replaceChecklistItems(int checklistId, List<String> titles) {
     return transaction(() async {
-      await delete(checklistItems).go();
+      await (delete(
+        checklistItems,
+      )..where((ci) => ci.checklistId.equals(checklistId))).go();
       await batch((b) {
         b.insertAll(checklistItems, [
           for (final (i, title) in titles.indexed)
-            ChecklistItemsCompanion.insert(title: title, position: i),
+            ChecklistItemsCompanion.insert(
+              checklistId: checklistId,
+              title: title,
+              position: i,
+            ),
         ]);
       });
     });

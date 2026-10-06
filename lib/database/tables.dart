@@ -10,7 +10,14 @@ mixin CreatedAt on Table {
   late final createdAt = dateTime().withDefault(currentDateAndTime)();
 }
 
+class Checklists extends Table with AutoIncrementingPrimaryKey, CreatedAt {
+  TextColumn get title => text()();
+}
+
 class ChecklistItems extends Table with AutoIncrementingPrimaryKey, CreatedAt {
+  IntColumn get checklistId =>
+      integer().references(Checklists, #id, onDelete: KeyAction.cascade)();
+
   TextColumn get title => text()();
 
   IntColumn get position => integer()();

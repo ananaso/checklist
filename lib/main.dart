@@ -3,7 +3,8 @@ import 'package:checklist/edit_checklist.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'database/database.dart';
+import 'database/database.dart' as db;
+import 'database/database.dart' show AppDatabase;
 
 void main() {
   runApp(
@@ -43,31 +44,47 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  @override
-  void initState() {
-    super.initState();
-  }
+  /// The list being shown. Until lists can be created/chosen, it's the first.
+  late final Future<db.Checklist> _checklist = Provider.of<AppDatabase>(
+    context,
+    listen: false,
+  ).getFirstChecklist();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit list',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (context) => const EditChecklist()),
+    return FutureBuilder(
+      future: _checklist,
+      builder: (context, snapshot) {
+        final checklist = snapshot.data;
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            title: Text(checklist?.title ?? widget.title),
+            actions: [
+              if (checklist != null)
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Edit list',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          EditChecklist(checklistId: checklist.id),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: checklist == null
+                  ? const CircularProgressIndicator()
+                  : Checklist(checklistId: checklist.id),
             ),
           ),
-        ],
-      ),
-      body: Center(
-        child: Padding(padding: EdgeInsetsGeometry.all(32), child: Checklist()),
-      ),
-      floatingActionButton: FloatingActionButton(onPressed: () {}),
+          floatingActionButton: FloatingActionButton(onPressed: () {}),
+        );
+      },
     );
   }
 }

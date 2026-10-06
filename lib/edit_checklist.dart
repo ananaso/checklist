@@ -74,7 +74,9 @@ class _EditableTitleState extends State<_EditableTitle> {
 }
 
 class EditChecklist extends StatefulWidget {
-  const EditChecklist({super.key});
+  const EditChecklist({super.key, required this.checklistId});
+
+  final int checklistId;
 
   @override
   State<EditChecklist> createState() => _EditChecklistState();
@@ -99,9 +101,10 @@ class _EditChecklistState extends State<EditChecklist> {
   @override
   void initState() {
     super.initState();
-    Provider.of<AppDatabase>(context, listen: false).getChecklistItems().then((
-      existing,
-    ) {
+    Provider.of<AppDatabase>(
+      context,
+      listen: false,
+    ).getChecklistItems(widget.checklistId).then((existing) {
       if (!mounted) return;
       setState(() {
         _items.addAll(existing.map((item) => _DraftItem(item.title)));
@@ -200,7 +203,7 @@ class _EditChecklistState extends State<EditChecklist> {
     // Text typed in the new item field but never submitted still counts.
     final pending = _controller.text.trim();
     if (pending.isNotEmpty) _items.add(_DraftItem(pending));
-    await database.replaceChecklistItems([
+    await database.replaceChecklistItems(widget.checklistId, [
       for (final item in _items) item.title,
     ]);
     navigator.pop();

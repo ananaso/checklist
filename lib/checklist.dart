@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class Checklist extends StatefulWidget {
-  const Checklist({super.key});
+  const Checklist({super.key, required this.checklistId});
+
+  final int checklistId;
 
   @override
   State<Checklist> createState() => _ChecklistState();
@@ -21,7 +23,7 @@ class _ChecklistState extends State<Checklist> {
     _items = Provider.of<AppDatabase>(
       context,
       listen: false,
-    ).watchChecklistItems();
+    ).watchChecklistItems(widget.checklistId);
   }
 
   @override
