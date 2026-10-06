@@ -32,12 +32,6 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(table);
           }
         }
-        // Until there's UI for creating lists, make sure one always exists.
-        if (await select(checklists).get().then((l) => l.isEmpty)) {
-          await into(
-            checklists,
-          ).insert(ChecklistsCompanion.insert(title: 'My Checklist'));
-        }
       },
     );
   }
@@ -52,6 +46,13 @@ class AppDatabase extends _$AppDatabase {
       ),
       // If you need web support, see https://drift.simonbinder.eu/platforms/web/
     );
+  }
+
+  /// Creates an empty checklist titled [title].
+  Future<Checklist> createChecklist(String title) {
+    return into(
+      checklists,
+    ).insertReturning(ChecklistsCompanion.insert(title: title));
   }
 
   /// Streams all checklists, oldest first, re-emitting on changes.

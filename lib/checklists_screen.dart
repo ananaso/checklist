@@ -18,6 +18,22 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     listen: false,
   ).watchChecklists();
 
+  Future<void> _create() async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final navigator = Navigator.of(context);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => const _NewChecklistDialog(),
+    );
+    if (title == null) return;
+    final checklist = await database.createChecklist(title);
+    navigator.push(
+      MaterialPageRoute(
+        builder: (context) => ChecklistScreen(checklist: checklist),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,6 +47,9 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
           final checklists = snapshot.data;
           if (checklists == null) {
             return const Center(child: CircularProgressIndicator());
+          }
+          if (checklists.isEmpty) {
+            return const Center(child: Text('No checklists yet'));
           }
           return ListView.builder(
             itemCount: checklists.length,
@@ -49,6 +68,55 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
           );
         },
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _create,
+        tooltip: 'New checklist',
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+/// Asks for a name; pops with the trimmed title, or null if cancelled.
+class _NewChecklistDialog extends StatefulWidget {
+  const _NewChecklistDialog();
+
+  @override
+  State<_NewChecklistDialog> createState() => _NewChecklistDialogState();
+}
+
+class _NewChecklistDialogState extends State<_NewChecklistDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  void _submit() {
+    final title = _controller.text.trim();
+    if (title.isNotEmpty) Navigator.of(context).pop(title);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('New checklist'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        onSubmitted: (_) => _submit(),
+        decoration: const InputDecoration(labelText: 'Name'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(onPressed: _submit, child: const Text('Create')),
+      ],
     );
   }
 }
