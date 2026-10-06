@@ -7,7 +7,9 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Checklists, ChecklistItems]) // , include: {'triggers.drift'}
+@DriftDatabase(
+  tables: [Checklists, ChecklistItems],
+) // , include: {'triggers.drift'}
 class AppDatabase extends _$AppDatabase {
   // After generating code, this class needs to define a `schemaVersion` getter
   // and a constructor telling drift where the database should be stored.
@@ -32,9 +34,9 @@ class AppDatabase extends _$AppDatabase {
         }
         // Until there's UI for creating lists, make sure one always exists.
         if (await select(checklists).get().then((l) => l.isEmpty)) {
-          await into(checklists).insert(
-            ChecklistsCompanion.insert(title: 'My Checklist'),
-          );
+          await into(
+            checklists,
+          ).insert(ChecklistsCompanion.insert(title: 'My Checklist'));
         }
       },
     );
@@ -52,12 +54,11 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  /// The first checklist (the only one, until lists can be created).
-  Future<Checklist> getFirstChecklist() {
-    return (select(checklists)
-          ..orderBy([(c) => OrderingTerm.asc(c.id)])
-          ..limit(1))
-        .getSingle();
+  /// Streams all checklists, oldest first, re-emitting on changes.
+  Stream<List<Checklist>> watchChecklists() {
+    return (select(
+      checklists,
+    )..orderBy([(c) => OrderingTerm.asc(c.id)])).watch();
   }
 
   /// Streams a checklist's items in list order, re-emitting on changes.
