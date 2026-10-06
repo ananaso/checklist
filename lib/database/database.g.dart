@@ -463,7 +463,16 @@ class $$ChecklistItemsTableTableManager
                 position: position,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$ChecklistItemsTable, ChecklistItem>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ChecklistItemsTable,
+                    ChecklistItem
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
