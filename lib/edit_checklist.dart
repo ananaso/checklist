@@ -78,8 +78,14 @@ class _EditChecklistState extends State<EditChecklist> {
             Expanded(
               child: ListView.builder(
                 itemCount: _items.length,
-                itemBuilder: (context, index) =>
-                    ListTile(title: Text(_items[index])),
+                itemBuilder: (context, index) => ListTile(
+                  title: Text(_items[index]),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete),
+                    tooltip: 'Delete',
+                    onPressed: () => setState(() => _items.removeAt(index)),
+                  ),
+                ),
               ),
             ),
             TextField(
