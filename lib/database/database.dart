@@ -55,6 +55,12 @@ class AppDatabase extends _$AppDatabase {
     ).insertReturning(ChecklistsCompanion.insert(title: title));
   }
 
+  Future<void> renameChecklist(int id, String title) {
+    return (update(checklists)..where((c) => c.id.equals(id))).write(
+      ChecklistsCompanion(title: Value(title)),
+    );
+  }
+
   /// Streams all checklists, oldest first, re-emitting on changes.
   Stream<List<Checklist>> watchChecklists() {
     return (select(

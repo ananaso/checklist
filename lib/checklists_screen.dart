@@ -23,7 +23,10 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     final navigator = Navigator.of(context);
     final title = await showDialog<String>(
       context: context,
-      builder: (context) => const _NewChecklistDialog(),
+      builder: (context) => const _ChecklistNameDialog(
+        heading: 'New checklist',
+        confirmLabel: 'Create',
+      ),
     );
     if (title == null) return;
     final checklist = await database.createChecklist(title);
@@ -32,6 +35,20 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
         builder: (context) => ChecklistScreen(checklist: checklist),
       ),
     );
+  }
+
+  Future<void> _rename(Checklist checklist) async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => _ChecklistNameDialog(
+        heading: 'Rename checklist',
+        confirmLabel: 'Rename',
+        initialTitle: checklist.title,
+      ),
+    );
+    if (title == null || title == checklist.title) return;
+    await database.renameChecklist(checklist.id, title);
   }
 
   @override
@@ -57,7 +74,15 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
               final checklist = checklists[index];
               return ListTile(
                 title: Text(checklist.title),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: PopupMenuButton<void>(
+                  tooltip: 'More',
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      onTap: () => _rename(checklist),
+                      child: const Text('Rename'),
+                    ),
+                  ],
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => ChecklistScreen(checklist: checklist),
@@ -78,15 +103,25 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
 }
 
 /// Asks for a name; pops with the trimmed title, or null if cancelled.
-class _NewChecklistDialog extends StatefulWidget {
-  const _NewChecklistDialog();
+class _ChecklistNameDialog extends StatefulWidget {
+  const _ChecklistNameDialog({
+    required this.heading,
+    required this.confirmLabel,
+    this.initialTitle = '',
+  });
+
+  final String heading;
+  final String confirmLabel;
+  final String initialTitle;
 
   @override
-  State<_NewChecklistDialog> createState() => _NewChecklistDialogState();
+  State<_ChecklistNameDialog> createState() => _ChecklistNameDialogState();
 }
 
-class _NewChecklistDialogState extends State<_NewChecklistDialog> {
-  final TextEditingController _controller = TextEditingController();
+class _ChecklistNameDialogState extends State<_ChecklistNameDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.initialTitle,
+  );
 
   void _submit() {
     final title = _controller.text.trim();
@@ -102,7 +137,7 @@ class _NewChecklistDialogState extends State<_NewChecklistDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('New checklist'),
+      title: Text(widget.heading),
       content: TextField(
         controller: _controller,
         autofocus: true,
@@ -115,7 +150,7 @@ class _NewChecklistDialogState extends State<_NewChecklistDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-        TextButton(onPressed: _submit, child: const Text('Create')),
+        TextButton(onPressed: _submit, child: Text(widget.confirmLabel)),
       ],
     );
   }
