@@ -51,6 +51,31 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     await database.renameChecklist(checklist.id, title);
   }
 
+  Future<void> _delete(Checklist checklist) async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete checklist?'),
+        content: Text(
+          '"${checklist.title}" and all of its items will be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await database.deleteChecklist(checklist.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,6 +105,10 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
                     PopupMenuItem(
                       onTap: () => _rename(checklist),
                       child: const Text('Rename'),
+                    ),
+                    PopupMenuItem(
+                      onTap: () => _delete(checklist),
+                      child: const Text('Delete'),
                     ),
                   ],
                 ),

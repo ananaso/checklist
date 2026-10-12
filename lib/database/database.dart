@@ -61,6 +61,11 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
+  /// Deletes a checklist; its items go with it via the cascading foreign key.
+  Future<void> deleteChecklist(int id) {
+    return (delete(checklists)..where((c) => c.id.equals(id))).go();
+  }
+
   /// Streams all checklists, oldest first, re-emitting on changes.
   Stream<List<Checklist>> watchChecklists() {
     return (select(
