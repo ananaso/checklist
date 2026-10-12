@@ -1,36 +1,80 @@
+import 'package:checklist/checklist_dialogs.dart';
 import 'package:checklist/checklist_view.dart';
 import 'package:checklist/edit_checklist.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'database/database.dart';
 
-/// One checklist: its items, with a button to edit them.
-class ChecklistScreen extends StatelessWidget {
+/// One checklist: its items, with buttons to rename, edit, or delete it.
+class ChecklistScreen extends StatefulWidget {
   const ChecklistScreen({super.key, required this.checklist});
 
   final Checklist checklist;
+
+  @override
+  State<ChecklistScreen> createState() => _ChecklistScreenState();
+}
+
+class _ChecklistScreenState extends State<ChecklistScreen> {
+  late String _title = widget.checklist.title;
+
+  Future<void> _rename() async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => ChecklistNameDialog(
+        heading: 'Rename checklist',
+        confirmLabel: 'Rename',
+        initialTitle: _title,
+      ),
+    );
+    if (title == null || title == _title) return;
+    await database.renameChecklist(widget.checklist.id, title);
+    if (mounted) setState(() => _title = title);
+  }
+
+  Future<void> _delete() async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final navigator = Navigator.of(context);
+    final confirmed = await confirmDeleteChecklist(context, _title);
+    if (!confirmed) return;
+    await database.deleteChecklist(widget.checklist.id);
+    navigator.pop();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(checklist.title),
+        title: Text(_title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.drive_file_rename_outline),
+            tooltip: 'Rename list',
+            onPressed: _rename,
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             tooltip: 'Edit list',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => EditChecklist(checklistId: checklist.id),
+                builder: (context) =>
+                    EditChecklist(checklistId: widget.checklist.id),
               ),
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Delete list',
+            onPressed: _delete,
           ),
         ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(32),
-        child: ChecklistView(checklistId: checklist.id),
+        child: ChecklistView(checklistId: widget.checklist.id),
       ),
     );
   }

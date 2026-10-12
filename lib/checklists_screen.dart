@@ -1,4 +1,6 @@
+import 'package:checklist/checklist_dialogs.dart';
 import 'package:checklist/checklist_screen.dart';
+import 'package:checklist/edit_checklist.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -23,7 +25,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     final navigator = Navigator.of(context);
     final title = await showDialog<String>(
       context: context,
-      builder: (context) => const _ChecklistNameDialog(
+      builder: (context) => const ChecklistNameDialog(
         heading: 'New checklist',
         confirmLabel: 'Create',
       ),
@@ -32,7 +34,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     final checklist = await database.createChecklist(title);
     navigator.push(
       MaterialPageRoute(
-        builder: (context) => ChecklistScreen(checklist: checklist),
+        builder: (context) => EditChecklist(checklistId: checklist.id),
       ),
     );
   }
@@ -41,7 +43,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     final database = Provider.of<AppDatabase>(context, listen: false);
     final title = await showDialog<String>(
       context: context,
-      builder: (context) => _ChecklistNameDialog(
+      builder: (context) => ChecklistNameDialog(
         heading: 'Rename checklist',
         confirmLabel: 'Rename',
         initialTitle: checklist.title,
@@ -53,26 +55,8 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
 
   Future<void> _delete(Checklist checklist) async {
     final database = Provider.of<AppDatabase>(context, listen: false);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete checklist?'),
-        content: Text(
-          '"${checklist.title}" and all of its items will be deleted.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+    final confirmed = await confirmDeleteChecklist(context, checklist.title);
+    if (!confirmed) return;
     await database.deleteChecklist(checklist.id);
   }
 
@@ -127,69 +111,6 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
         tooltip: 'New checklist',
         child: const Icon(Icons.add),
       ),
-    );
-  }
-}
-
-/// Asks for a name; pops with the trimmed title, or null if cancelled.
-class _ChecklistNameDialog extends StatefulWidget {
-  const _ChecklistNameDialog({
-    required this.heading,
-    required this.confirmLabel,
-    this.initialTitle = '',
-  });
-
-  final String heading;
-  final String confirmLabel;
-  final String initialTitle;
-
-  @override
-  State<_ChecklistNameDialog> createState() => _ChecklistNameDialogState();
-}
-
-class _ChecklistNameDialogState extends State<_ChecklistNameDialog> {
-  late final TextEditingController _controller = TextEditingController(
-    text: widget.initialTitle,
-  );
-
-  String? _error;
-
-  void _submit() {
-    final title = _controller.text.trim();
-    if (title.isEmpty) {
-      setState(() => _error = 'Name can\'t be empty');
-      return;
-    }
-    Navigator.of(context).pop(title);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.heading),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.sentences,
-        onChanged: (_) {
-          if (_error != null) setState(() => _error = null);
-        },
-        onSubmitted: (_) => _submit(),
-        decoration: InputDecoration(labelText: 'Name', errorText: _error),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(onPressed: _submit, child: Text(widget.confirmLabel)),
-      ],
     );
   }
 }
