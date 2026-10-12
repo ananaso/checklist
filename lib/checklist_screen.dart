@@ -37,10 +37,17 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   Future<void> _delete() async {
     final database = Provider.of<AppDatabase>(context, listen: false);
     final navigator = Navigator.of(context);
-    final confirmed = await confirmDeleteChecklist(context, _title);
-    if (!confirmed) return;
-    await database.deleteChecklist(widget.checklist.id);
-    navigator.pop();
+    final deleted = await deleteChecklistWithConfirmation(
+      context,
+      database,
+      widget.checklist,
+    );
+    if (deleted) navigator.pop();
+  }
+
+  Future<void> _editParents() {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    return editChecklistParents(context, database, widget.checklist);
   }
 
   @override
@@ -54,6 +61,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             icon: const Icon(Icons.drive_file_rename_outline),
             tooltip: 'Rename list',
             onPressed: _rename,
+          ),
+          IconButton(
+            icon: const Icon(Icons.account_tree),
+            tooltip: 'Inherits from',
+            onPressed: _editParents,
           ),
           IconButton(
             icon: const Icon(Icons.edit),

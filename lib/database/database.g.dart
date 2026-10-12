@@ -606,11 +606,286 @@ class ChecklistItemsCompanion extends UpdateCompanion<ChecklistItem> {
   }
 }
 
+class $ChecklistParentsTable extends ChecklistParents
+    with TableInfo<$ChecklistParentsTable, ChecklistParent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChecklistParentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _childIdMeta = const VerificationMeta(
+    'childId',
+  );
+  @override
+  late final GeneratedColumn<int> childId = GeneratedColumn<int>(
+    'child_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES checklists (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _parentIdMeta = const VerificationMeta(
+    'parentId',
+  );
+  @override
+  late final GeneratedColumn<int> parentId = GeneratedColumn<int>(
+    'parent_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES checklists (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [childId, parentId, position];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'checklist_parents';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChecklistParent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('child_id')) {
+      context.handle(
+        _childIdMeta,
+        childId.isAcceptableOrUnknown(data['child_id']!, _childIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_childIdMeta);
+    }
+    if (data.containsKey('parent_id')) {
+      context.handle(
+        _parentIdMeta,
+        parentId.isAcceptableOrUnknown(data['parent_id']!, _parentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_parentIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {childId, parentId};
+  @override
+  ChecklistParent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChecklistParent(
+      childId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}child_id'],
+      )!,
+      parentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}parent_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+    );
+  }
+
+  @override
+  $ChecklistParentsTable createAlias(String alias) {
+    return $ChecklistParentsTable(attachedDatabase, alias);
+  }
+}
+
+class ChecklistParent extends DataClass implements Insertable<ChecklistParent> {
+  final int childId;
+  final int parentId;
+  final int position;
+  const ChecklistParent({
+    required this.childId,
+    required this.parentId,
+    required this.position,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['child_id'] = Variable<int>(childId);
+    map['parent_id'] = Variable<int>(parentId);
+    map['position'] = Variable<int>(position);
+    return map;
+  }
+
+  ChecklistParentsCompanion toCompanion(bool nullToAbsent) {
+    return ChecklistParentsCompanion(
+      childId: Value(childId),
+      parentId: Value(parentId),
+      position: Value(position),
+    );
+  }
+
+  factory ChecklistParent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChecklistParent(
+      childId: serializer.fromJson<int>(json['childId']),
+      parentId: serializer.fromJson<int>(json['parentId']),
+      position: serializer.fromJson<int>(json['position']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'childId': serializer.toJson<int>(childId),
+      'parentId': serializer.toJson<int>(parentId),
+      'position': serializer.toJson<int>(position),
+    };
+  }
+
+  ChecklistParent copyWith({int? childId, int? parentId, int? position}) =>
+      ChecklistParent(
+        childId: childId ?? this.childId,
+        parentId: parentId ?? this.parentId,
+        position: position ?? this.position,
+      );
+  ChecklistParent copyWithCompanion(ChecklistParentsCompanion data) {
+    return ChecklistParent(
+      childId: data.childId.present ? data.childId.value : this.childId,
+      parentId: data.parentId.present ? data.parentId.value : this.parentId,
+      position: data.position.present ? data.position.value : this.position,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChecklistParent(')
+          ..write('childId: $childId, ')
+          ..write('parentId: $parentId, ')
+          ..write('position: $position')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(childId, parentId, position);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChecklistParent &&
+          other.childId == this.childId &&
+          other.parentId == this.parentId &&
+          other.position == this.position);
+}
+
+class ChecklistParentsCompanion extends UpdateCompanion<ChecklistParent> {
+  final Value<int> childId;
+  final Value<int> parentId;
+  final Value<int> position;
+  final Value<int> rowid;
+  const ChecklistParentsCompanion({
+    this.childId = const Value.absent(),
+    this.parentId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChecklistParentsCompanion.insert({
+    required int childId,
+    required int parentId,
+    required int position,
+    this.rowid = const Value.absent(),
+  }) : childId = Value(childId),
+       parentId = Value(parentId),
+       position = Value(position);
+  static Insertable<ChecklistParent> custom({
+    Expression<int>? childId,
+    Expression<int>? parentId,
+    Expression<int>? position,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (childId != null) 'child_id': childId,
+      if (parentId != null) 'parent_id': parentId,
+      if (position != null) 'position': position,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChecklistParentsCompanion copyWith({
+    Value<int>? childId,
+    Value<int>? parentId,
+    Value<int>? position,
+    Value<int>? rowid,
+  }) {
+    return ChecklistParentsCompanion(
+      childId: childId ?? this.childId,
+      parentId: parentId ?? this.parentId,
+      position: position ?? this.position,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (childId.present) {
+      map['child_id'] = Variable<int>(childId.value);
+    }
+    if (parentId.present) {
+      map['parent_id'] = Variable<int>(parentId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChecklistParentsCompanion(')
+          ..write('childId: $childId, ')
+          ..write('parentId: $parentId, ')
+          ..write('position: $position, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $ChecklistsTable checklists = $ChecklistsTable(this);
   late final $ChecklistItemsTable checklistItems = $ChecklistItemsTable(this);
+  late final $ChecklistParentsTable checklistParents = $ChecklistParentsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -618,6 +893,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     checklists,
     checklistItems,
+    checklistParents,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -627,6 +903,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('checklist_items', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'checklists',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('checklist_parents', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'checklists',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('checklist_parents', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -661,6 +951,42 @@ final class $$ChecklistsTableReferences
     ).filter((f) => f.checklistId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_checklistItemsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ChecklistParentsTable, List<ChecklistParent>>
+  _parentLinksTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.checklistParents,
+    aliasName: 'checklists__id__checklist_parents__child_id',
+  );
+
+  $$ChecklistParentsTableProcessedTableManager get parentLinks {
+    final manager = $$ChecklistParentsTableTableManager(
+      $_db,
+      $_db.checklistParents,
+    ).filter((f) => f.childId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_parentLinksTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$ChecklistParentsTable, List<ChecklistParent>>
+  _childLinksTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.checklistParents,
+    aliasName: 'checklists__id__checklist_parents__parent_id',
+  );
+
+  $$ChecklistParentsTableProcessedTableManager get childLinks {
+    final manager = $$ChecklistParentsTableTableManager(
+      $_db,
+      $_db.checklistParents,
+    ).filter((f) => f.parentId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_childLinksTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -707,6 +1033,56 @@ class $$ChecklistsTableFilterComposer
           }) => $$ChecklistItemsTableFilterComposer(
             $db: $db,
             $table: $db.checklistItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> parentLinks(
+    Expression<bool> Function($$ChecklistParentsTableFilterComposer f) f,
+  ) {
+    final $$ChecklistParentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.checklistParents,
+      getReferencedColumn: (t) => t.childId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistParentsTableFilterComposer(
+            $db: $db,
+            $table: $db.checklistParents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> childLinks(
+    Expression<bool> Function($$ChecklistParentsTableFilterComposer f) f,
+  ) {
+    final $$ChecklistParentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.checklistParents,
+      getReferencedColumn: (t) => t.parentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistParentsTableFilterComposer(
+            $db: $db,
+            $table: $db.checklistParents,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -784,6 +1160,56 @@ class $$ChecklistsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> parentLinks<T extends Object>(
+    Expression<T> Function($$ChecklistParentsTableAnnotationComposer a) f,
+  ) {
+    final $$ChecklistParentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.checklistParents,
+      getReferencedColumn: (t) => t.childId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistParentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.checklistParents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> childLinks<T extends Object>(
+    Expression<T> Function($$ChecklistParentsTableAnnotationComposer a) f,
+  ) {
+    final $$ChecklistParentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.checklistParents,
+      getReferencedColumn: (t) => t.parentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistParentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.checklistParents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$ChecklistsTableTableManager
@@ -799,7 +1225,11 @@ class $$ChecklistsTableTableManager
           $$ChecklistsTableUpdateCompanionBuilder,
           (Checklist, $$ChecklistsTableReferences),
           Checklist,
-          PrefetchHooks Function({bool checklistItemsRefs})
+          PrefetchHooks Function({
+            bool checklistItemsRefs,
+            bool parentLinks,
+            bool childLinks,
+          })
         > {
   $$ChecklistsTableTableManager(_$AppDatabase db, $ChecklistsTable table)
     : super(
@@ -840,40 +1270,89 @@ class $$ChecklistsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({checklistItemsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [
-                if (checklistItemsRefs) db.checklistItems,
-              ],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (checklistItemsRefs)
-                    await $_getPrefetchedData<
-                      Checklist,
-                      $ChecklistsTable,
-                      ChecklistItem
-                    >(
-                      currentTable: table,
-                      referencedTable: $$ChecklistsTableReferences
-                          ._checklistItemsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$ChecklistsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).checklistItemsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.checklistId == item.id,
-                          ),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({
+                checklistItemsRefs = false,
+                parentLinks = false,
+                childLinks = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (checklistItemsRefs) db.checklistItems,
+                    if (parentLinks) db.checklistParents,
+                    if (childLinks) db.checklistParents,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (checklistItemsRefs)
+                        await $_getPrefetchedData<
+                          Checklist,
+                          $ChecklistsTable,
+                          ChecklistItem
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChecklistsTableReferences
+                              ._checklistItemsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChecklistsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).checklistItemsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.checklistId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (parentLinks)
+                        await $_getPrefetchedData<
+                          Checklist,
+                          $ChecklistsTable,
+                          ChecklistParent
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChecklistsTableReferences
+                              ._parentLinksTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChecklistsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).parentLinks,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.childId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (childLinks)
+                        await $_getPrefetchedData<
+                          Checklist,
+                          $ChecklistsTable,
+                          ChecklistParent
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChecklistsTableReferences
+                              ._childLinksTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChecklistsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).childLinks,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.parentId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -890,7 +1369,11 @@ typedef $$ChecklistsTableProcessedTableManager =
       $$ChecklistsTableUpdateCompanionBuilder,
       (Checklist, $$ChecklistsTableReferences),
       Checklist,
-      PrefetchHooks Function({bool checklistItemsRefs})
+      PrefetchHooks Function({
+        bool checklistItemsRefs,
+        bool parentLinks,
+        bool childLinks,
+      })
     >;
 typedef $$ChecklistItemsTableCreateCompanionBuilder =
     ChecklistItemsCompanion Function({
@@ -1210,6 +1693,382 @@ typedef $$ChecklistItemsTableProcessedTableManager =
       ChecklistItem,
       PrefetchHooks Function({bool checklistId})
     >;
+typedef $$ChecklistParentsTableCreateCompanionBuilder =
+    ChecklistParentsCompanion Function({
+      required int childId,
+      required int parentId,
+      required int position,
+      Value<int> rowid,
+    });
+typedef $$ChecklistParentsTableUpdateCompanionBuilder =
+    ChecklistParentsCompanion Function({
+      Value<int> childId,
+      Value<int> parentId,
+      Value<int> position,
+      Value<int> rowid,
+    });
+
+final class $$ChecklistParentsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $ChecklistParentsTable, ChecklistParent> {
+  $$ChecklistParentsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ChecklistsTable _childIdTable(_$AppDatabase db) =>
+      db.checklists.createAlias('checklist_parents__child_id__checklists__id');
+
+  $$ChecklistsTableProcessedTableManager get childId {
+    final $_column = $_itemColumn<int>('child_id')!;
+
+    final manager = $$ChecklistsTableTableManager(
+      $_db,
+      $_db.checklists,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_childIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $ChecklistsTable _parentIdTable(_$AppDatabase db) =>
+      db.checklists.createAlias('checklist_parents__parent_id__checklists__id');
+
+  $$ChecklistsTableProcessedTableManager get parentId {
+    final $_column = $_itemColumn<int>('parent_id')!;
+
+    final manager = $$ChecklistsTableTableManager(
+      $_db,
+      $_db.checklists,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_parentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ChecklistParentsTableFilterComposer
+    extends Composer<_$AppDatabase, $ChecklistParentsTable> {
+  $$ChecklistParentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ChecklistsTableFilterComposer get childId {
+    final $$ChecklistsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.childId,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableFilterComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ChecklistsTableFilterComposer get parentId {
+    final $$ChecklistsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableFilterComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChecklistParentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChecklistParentsTable> {
+  $$ChecklistParentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ChecklistsTableOrderingComposer get childId {
+    final $$ChecklistsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.childId,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableOrderingComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ChecklistsTableOrderingComposer get parentId {
+    final $$ChecklistsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableOrderingComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChecklistParentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChecklistParentsTable> {
+  $$ChecklistParentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  $$ChecklistsTableAnnotationComposer get childId {
+    final $$ChecklistsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.childId,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$ChecklistsTableAnnotationComposer get parentId {
+    final $$ChecklistsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.parentId,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ChecklistParentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChecklistParentsTable,
+          ChecklistParent,
+          $$ChecklistParentsTableFilterComposer,
+          $$ChecklistParentsTableOrderingComposer,
+          $$ChecklistParentsTableAnnotationComposer,
+          $$ChecklistParentsTableCreateCompanionBuilder,
+          $$ChecklistParentsTableUpdateCompanionBuilder,
+          (ChecklistParent, $$ChecklistParentsTableReferences),
+          ChecklistParent,
+          PrefetchHooks Function({bool childId, bool parentId})
+        > {
+  $$ChecklistParentsTableTableManager(
+    _$AppDatabase db,
+    $ChecklistParentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChecklistParentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChecklistParentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChecklistParentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> childId = const Value.absent(),
+                Value<int> parentId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChecklistParentsCompanion(
+                childId: childId,
+                parentId: parentId,
+                position: position,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int childId,
+                required int parentId,
+                required int position,
+                Value<int> rowid = const Value.absent(),
+              }) => ChecklistParentsCompanion.insert(
+                childId: childId,
+                parentId: parentId,
+                position: position,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ChecklistParentsTable, ChecklistParent>(table),
+                  $$ChecklistParentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({childId = false, parentId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (childId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.childId,
+                                referencedTable:
+                                    $$ChecklistParentsTableReferences
+                                        ._childIdTable(db),
+                                referencedColumn:
+                                    $$ChecklistParentsTableReferences
+                                        ._childIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (parentId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.parentId,
+                                referencedTable:
+                                    $$ChecklistParentsTableReferences
+                                        ._parentIdTable(db),
+                                referencedColumn:
+                                    $$ChecklistParentsTableReferences
+                                        ._parentIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ChecklistParentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChecklistParentsTable,
+      ChecklistParent,
+      $$ChecklistParentsTableFilterComposer,
+      $$ChecklistParentsTableOrderingComposer,
+      $$ChecklistParentsTableAnnotationComposer,
+      $$ChecklistParentsTableCreateCompanionBuilder,
+      $$ChecklistParentsTableUpdateCompanionBuilder,
+      (ChecklistParent, $$ChecklistParentsTableReferences),
+      ChecklistParent,
+      PrefetchHooks Function({bool childId, bool parentId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1218,4 +2077,6 @@ class $AppDatabaseManager {
       $$ChecklistsTableTableManager(_db, _db.checklists);
   $$ChecklistItemsTableTableManager get checklistItems =>
       $$ChecklistItemsTableTableManager(_db, _db.checklistItems);
+  $$ChecklistParentsTableTableManager get checklistParents =>
+      $$ChecklistParentsTableTableManager(_db, _db.checklistParents);
 }

@@ -98,13 +98,24 @@ class _EditChecklistState extends State<EditChecklist> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
+  /// Names of the lists this one inherits items from. Their items aren't
+  /// editable here, so say why they're missing from the draft.
+  List<String> _inheritedFrom = const [];
+
   @override
   void initState() {
     super.initState();
-    Provider.of<AppDatabase>(
-      context,
-      listen: false,
-    ).getChecklistItems(widget.checklistId).then((existing) {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    database.watchChecklistSections(widget.checklistId).first.then((sections) {
+      if (!mounted) return;
+      setState(() {
+        _inheritedFrom = [
+          for (final s in sections)
+            if (s.source.id != widget.checklistId) s.source.title,
+        ];
+      });
+    });
+    database.getChecklistItems(widget.checklistId).then((existing) {
       if (!mounted) return;
       setState(() {
         _items.addAll(existing.map((item) => _DraftItem(item.title)));
@@ -249,6 +260,14 @@ class _EditChecklistState extends State<EditChecklist> {
           padding: const EdgeInsets.all(32),
           child: Column(
             children: [
+              if (_inheritedFrom.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'Also includes items from ${_inheritedFrom.join(', ')}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
               Expanded(
                 child: ReorderableListView.builder(
                   buildDefaultDragHandles: false,

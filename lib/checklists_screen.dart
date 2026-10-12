@@ -55,9 +55,12 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
 
   Future<void> _delete(Checklist checklist) async {
     final database = Provider.of<AppDatabase>(context, listen: false);
-    final confirmed = await confirmDeleteChecklist(context, checklist.title);
-    if (!confirmed) return;
-    await database.deleteChecklist(checklist.id);
+    await deleteChecklistWithConfirmation(context, database, checklist);
+  }
+
+  Future<void> _editParents(Checklist checklist) {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    return editChecklistParents(context, database, checklist);
   }
 
   @override
@@ -89,6 +92,10 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
                     PopupMenuItem(
                       onTap: () => _rename(checklist),
                       child: const Text('Rename'),
+                    ),
+                    PopupMenuItem(
+                      onTap: () => _editParents(checklist),
+                      child: const Text('Inherits from…'),
                     ),
                     PopupMenuItem(
                       onTap: () => _delete(checklist),

@@ -12,7 +12,7 @@ class ChecklistView extends StatefulWidget {
 }
 
 class _ChecklistViewState extends State<ChecklistView> {
-  late final Stream<List<ChecklistItem>> _items;
+  late final Stream<List<ChecklistSection>> _sections;
 
   /// Ids of checked items. Local only; not persisted.
   final Set<int> _checked = {};
@@ -20,36 +20,53 @@ class _ChecklistViewState extends State<ChecklistView> {
   @override
   void initState() {
     super.initState();
-    _items = Provider.of<AppDatabase>(
+    _sections = Provider.of<AppDatabase>(
       context,
       listen: false,
-    ).watchChecklistItems(widget.checklistId);
+    ).watchChecklistSections(widget.checklistId);
   }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: _items,
+      stream: _sections,
       builder: (context, snapshot) {
-        final items = snapshot.data;
-        if (items == null) {
+        final data = snapshot.data;
+        if (data == null) {
           return const CircularProgressIndicator();
         }
+        final sections = data.where((s) => s.items.isNotEmpty).toList();
+        // Headers only matter once items come from more than this list.
+        final showHeaders = sections.any(
+          (s) => s.source.id != widget.checklistId,
+        );
         return ListView(
           children: [
-            for (final item in items)
-              CheckboxListTile(
-                title: Text(item.title),
-                value: _checked.contains(item.id),
-                controlAffinity: ListTileControlAffinity.leading,
-                onChanged: (value) => setState(() {
-                  if (value!) {
-                    _checked.add(item.id);
-                  } else {
-                    _checked.remove(item.id);
-                  }
-                }),
-              ),
+            for (final section in sections) ...[
+              if (showHeaders)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                  child: Text(
+                    section.source.id == widget.checklistId
+                        ? 'This list'
+                        : 'From ${section.source.title}',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+              for (final item in section.items)
+                CheckboxListTile(
+                  title: Text(item.title),
+                  value: _checked.contains(item.id),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  onChanged: (value) => setState(() {
+                    if (value!) {
+                      _checked.add(item.id);
+                    } else {
+                      _checked.remove(item.id);
+                    }
+                  }),
+                ),
+            ],
           ],
         );
       },
