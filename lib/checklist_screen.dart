@@ -19,6 +19,12 @@ class ChecklistScreen extends StatefulWidget {
 class _ChecklistScreenState extends State<ChecklistScreen> {
   late String _title = widget.checklist.title;
 
+  /// Ids of the checked items, to disable "Uncheck all" when there are none.
+  late final Stream<Set<int>> _checked = Provider.of<AppDatabase>(
+    context,
+    listen: false,
+  ).watchCheckedItemIds(widget.checklist.id);
+
   Future<void> _rename() async {
     final database = Provider.of<AppDatabase>(context, listen: false);
     final title = await showDialog<String>(
@@ -45,6 +51,29 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     if (deleted) navigator.pop();
   }
 
+  /// Unchecks every item, offering to put the checks back.
+  Future<void> _uncheckAll() async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final id = widget.checklist.id;
+    final previous = await database.getCheckedItemIds(id);
+    if (previous.isEmpty) return;
+    await database.setCheckedItemIds(id, {});
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Unchecked all items'),
+          // Snackbars with an action otherwise stay until dismissed.
+          persist: false,
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => database.setCheckedItemIds(id, previous),
+          ),
+        ),
+      );
+  }
+
   Future<void> _editParents() {
     final database = Provider.of<AppDatabase>(context, listen: false);
     return editChecklistParents(context, database, widget.checklist);
@@ -57,6 +86,14 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(_title),
         actions: [
+          StreamBuilder(
+            stream: _checked,
+            builder: (context, snapshot) => IconButton(
+              icon: const Icon(Icons.restart_alt),
+              tooltip: 'Uncheck all',
+              onPressed: snapshot.data?.isNotEmpty == true ? _uncheckAll : null,
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.drive_file_rename_outline),
             tooltip: 'Rename list',

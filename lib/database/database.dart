@@ -19,7 +19,7 @@ class ChecklistSection {
 }
 
 @DriftDatabase(
-  tables: [Checklists, ChecklistItems, ChecklistParents],
+  tables: [Checklists, ChecklistItems, ChecklistParents, ChecklistChecks],
 ) // , include: {'triggers.drift'}
 class AppDatabase extends _$AppDatabase {
   // After generating code, this class needs to define a `schemaVersion` getter
@@ -86,16 +86,20 @@ class AppDatabase extends _$AppDatabase {
         final parentIds = await getChecklistParentIds(id);
         for (final child in await getChildren(id)) {
           final existing = await getChecklistItems(child.id);
-          await batch((b) {
-            b.insertAll(checklistItems, [
-              for (final (i, item) in items.indexed)
-                ChecklistItemsCompanion.insert(
-                  checklistId: child.id,
-                  title: item.title,
-                  position: existing.length + i,
-                ),
-            ]);
-          });
+          final checkedIds = await getCheckedItemIds(child.id);
+          for (final (i, item) in items.indexed) {
+            final copy = await into(checklistItems).insertReturning(
+              ChecklistItemsCompanion.insert(
+                checklistId: child.id,
+                title: item.title,
+                position: existing.length + i,
+              ),
+            );
+            // Keep the child's progress on items it showed before the copy.
+            if (checkedIds.contains(item.id)) {
+              await setItemChecked(child.id, copy.id, true);
+            }
+          }
           final merged = <int>{};
           for (final parentId in await getChecklistParentIds(child.id)) {
             if (parentId == id) {
@@ -261,18 +265,101 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Replaces a checklist's items with [titles], positioned in the given order.
+  /// Every item is new, so any checks on the old ones are lost.
   Future<void> replaceChecklistItems(int checklistId, List<String> titles) {
+    return saveChecklistItems(checklistId, [
+      for (final title in titles) (id: null, title: title),
+    ]);
+  }
+
+  /// Makes a checklist's items exactly [items], in the given order. Entries
+  /// with an [id] update that existing item in place, so its checks survive;
+  /// entries without one are inserted. Items not listed are deleted.
+  Future<void> saveChecklistItems(
+    int checklistId,
+    List<({int? id, String title})> items,
+  ) {
     return transaction(() async {
-      await (delete(
-        checklistItems,
-      )..where((ci) => ci.checklistId.equals(checklistId))).go();
-      await batch((b) {
-        b.insertAll(checklistItems, [
-          for (final (i, title) in titles.indexed)
+      final keep = [
+        for (final item in items)
+          if (item.id != null) item.id!,
+      ];
+      await (delete(checklistItems)..where(
+            (ci) => ci.checklistId.equals(checklistId) & ci.id.isNotIn(keep),
+          ))
+          .go();
+      for (final (i, item) in items.indexed) {
+        if (item.id == null) {
+          await into(checklistItems).insert(
             ChecklistItemsCompanion.insert(
               checklistId: checklistId,
-              title: title,
+              title: item.title,
               position: i,
+            ),
+          );
+        } else {
+          await (update(checklistItems)..where(
+                (ci) =>
+                    ci.id.equals(item.id!) & ci.checklistId.equals(checklistId),
+              ))
+              .write(
+                ChecklistItemsCompanion(
+                  title: Value(item.title),
+                  position: Value(i),
+                ),
+              );
+        }
+      }
+    });
+  }
+
+  /// The ids of the items checked off in [checklistId], once.
+  Future<Set<int>> getCheckedItemIds(int checklistId) async {
+    final rows = await (select(
+      checklistChecks,
+    )..where((c) => c.checklistId.equals(checklistId))).get();
+    return {for (final row in rows) row.itemId};
+  }
+
+  /// Streams the ids of the items checked off in [checklistId], re-emitting on
+  /// changes.
+  Stream<Set<int>> watchCheckedItemIds(int checklistId) {
+    return (select(checklistChecks)
+          ..where((c) => c.checklistId.equals(checklistId)))
+        .watch()
+        .map((rows) => {for (final row in rows) row.itemId});
+  }
+
+  /// Checks or unchecks [itemId] in [checklistId].
+  Future<void> setItemChecked(int checklistId, int itemId, bool checked) async {
+    if (checked) {
+      await into(checklistChecks).insertOnConflictUpdate(
+        ChecklistChecksCompanion.insert(
+          checklistId: checklistId,
+          itemId: itemId,
+        ),
+      );
+    } else {
+      await (delete(checklistChecks)..where(
+            (c) => c.checklistId.equals(checklistId) & c.itemId.equals(itemId),
+          ))
+          .go();
+    }
+  }
+
+  /// Checks exactly [itemIds] in [checklistId], unchecking everything else.
+  /// With an empty set this resets the list.
+  Future<void> setCheckedItemIds(int checklistId, Set<int> itemIds) {
+    return transaction(() async {
+      await (delete(
+        checklistChecks,
+      )..where((c) => c.checklistId.equals(checklistId))).go();
+      await batch((b) {
+        b.insertAll(checklistChecks, [
+          for (final id in itemIds)
+            ChecklistChecksCompanion.insert(
+              checklistId: checklistId,
+              itemId: id,
             ),
         ]);
       });

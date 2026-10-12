@@ -116,4 +116,88 @@ void main() {
       expect(await db.getChecklistParentIds(child.id), [root.id]);
     },
   );
+
+  group('checks', () {
+    Future<List<ChecklistItem>> items(Checklist checklist) =>
+        db.getChecklistItems(checklist.id);
+
+    test('are kept per viewing list, even for inherited items', () async {
+      final base = await list('Base', ['x']);
+      final a = await list('A');
+      final b = await list('B');
+      await db.setChecklistParents(a.id, [base.id]);
+      await db.setChecklistParents(b.id, [base.id]);
+      final x = (await items(base)).single;
+
+      await db.setItemChecked(a.id, x.id, true);
+
+      expect(await db.getCheckedItemIds(a.id), {x.id});
+      expect(await db.getCheckedItemIds(b.id), isEmpty);
+      expect(await db.getCheckedItemIds(base.id), isEmpty);
+    });
+
+    test('can be unchecked and reset for one list only', () async {
+      final a = await list('A', ['x', 'y']);
+      final b = await list('B', ['z']);
+      final [x, y] = await items(a);
+      final [z] = await items(b);
+      await db.setItemChecked(a.id, x.id, true);
+      await db.setItemChecked(a.id, y.id, true);
+      await db.setItemChecked(b.id, z.id, true);
+
+      await db.setItemChecked(a.id, x.id, false);
+      expect(await db.getCheckedItemIds(a.id), {y.id});
+
+      await db.setCheckedItemIds(a.id, {});
+      expect(await db.getCheckedItemIds(a.id), isEmpty);
+      expect(await db.getCheckedItemIds(b.id), {z.id});
+    });
+
+    test('survive saving, and removed items lose theirs', () async {
+      final a = await list('A', ['x', 'y']);
+      final [x, y] = await items(a);
+      await db.setItemChecked(a.id, x.id, true);
+      await db.setItemChecked(a.id, y.id, true);
+
+      await db.saveChecklistItems(a.id, [
+        (id: null, title: 'new'),
+        (id: x.id, title: 'x renamed'),
+      ]);
+
+      expect((await items(a)).map((i) => i.title), ['new', 'x renamed']);
+      expect(await db.getCheckedItemIds(a.id), {x.id});
+    });
+
+    test('on a base item disappear from its children when deleted', () async {
+      final base = await list('Base', ['x']);
+      final child = await list('Child');
+      await db.setChecklistParents(child.id, [base.id]);
+      final x = (await items(base)).single;
+      await db.setItemChecked(child.id, x.id, true);
+
+      await db.replaceChecklistItems(base.id, []);
+
+      expect(await db.getCheckedItemIds(child.id), isEmpty);
+    });
+
+    test('carry over to the copies when a base list is deleted', () async {
+      final base = await list('Base', ['x', 'y']);
+      final child = await list('Child', ['c']);
+      await db.setChecklistParents(child.id, [base.id]);
+      final [x, _] = await items(base);
+      await db.setItemChecked(child.id, x.id, true);
+
+      await db.deleteChecklist(base.id, copyToChildren: true);
+
+      final own = await items(child);
+      final checked = await db.getCheckedItemIds(child.id);
+      expect(
+        [
+          for (final i in own)
+            if (checked.contains(i.id)) i.title,
+        ],
+        ['x'],
+      );
+    });
+  });
 }

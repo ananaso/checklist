@@ -5,13 +5,17 @@ import 'package:provider/provider.dart';
 /// A draft item. The key gives each row a stable identity (titles can repeat),
 /// which [ReorderableListView] needs to track rows as they move.
 class _DraftItem {
-  _DraftItem(this.title, [Key? key]) : key = key ?? UniqueKey();
+  _DraftItem(this.title, {this.id, Key? key}) : key = key ?? UniqueKey();
 
   final String title;
+
+  /// The stored item this row edits, or null for one not saved yet. Saving
+  /// keeps it, so the item's checks survive the edit.
+  final int? id;
   final Key key;
 
   /// A copy with a new title but the same row identity.
-  _DraftItem withTitle(String title) => _DraftItem(title, key);
+  _DraftItem withTitle(String title) => _DraftItem(title, id: id, key: key);
 }
 
 /// An item title that edits in place. Reports changes on submit or when the
@@ -118,7 +122,9 @@ class _EditChecklistState extends State<EditChecklist> {
     database.getChecklistItems(widget.checklistId).then((existing) {
       if (!mounted) return;
       setState(() {
-        _items.addAll(existing.map((item) => _DraftItem(item.title)));
+        _items.addAll(
+          existing.map((item) => _DraftItem(item.title, id: item.id)),
+        );
         _loaded = true;
       });
       // A new, empty list almost certainly wants items typed in right away.
@@ -216,8 +222,8 @@ class _EditChecklistState extends State<EditChecklist> {
     // Text typed in the new item field but never submitted still counts.
     final pending = _controller.text.trim();
     if (pending.isNotEmpty) _items.add(_DraftItem(pending));
-    await database.replaceChecklistItems(widget.checklistId, [
-      for (final item in _items) item.title,
+    await database.saveChecklistItems(widget.checklistId, [
+      for (final item in _items) (id: item.id, title: item.title),
     ]);
     navigator.pop();
   }
