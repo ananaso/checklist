@@ -66,11 +66,14 @@ class AppDatabase extends _$AppDatabase {
     return (delete(checklists)..where((c) => c.id.equals(id))).go();
   }
 
-  /// Streams all checklists, oldest first, re-emitting on changes.
+  /// Streams all checklists, sorted alphabetically by title (ignoring case),
+  /// re-emitting on changes.
   Stream<List<Checklist>> watchChecklists() {
-    return (select(
-      checklists,
-    )..orderBy([(c) => OrderingTerm.asc(c.id)])).watch();
+    return (select(checklists)..orderBy([
+          (c) => OrderingTerm.asc(c.title.collate(Collate.noCase)),
+          (c) => OrderingTerm.asc(c.id),
+        ]))
+        .watch();
   }
 
   /// Streams a checklist's items in list order, re-emitting on changes.
