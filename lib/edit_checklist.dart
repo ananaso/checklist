@@ -110,6 +110,8 @@ class _EditChecklistState extends State<EditChecklist> {
         _items.addAll(existing.map((item) => _DraftItem(item.title)));
         _loaded = true;
       });
+      // A new, empty list almost certainly wants items typed in right away.
+      if (existing.isEmpty) _focusNode.requestFocus();
     });
   }
 
