@@ -1,7 +1,7 @@
 import 'package:checklist/checklist_dialogs.dart';
 import 'package:checklist/checklist_screen.dart';
 import 'package:checklist/edit_checklist.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'database/database.dart';

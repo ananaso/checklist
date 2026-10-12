@@ -1,5 +1,6 @@
 import 'package:checklist/checklists_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:dynamic_color/dynamic_color.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'database/database.dart';
@@ -24,10 +25,26 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Checklist',
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
-      home: const ChecklistsScreen(),
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        return MaterialApp(
+          title: 'Checklist',
+          theme: ThemeData(
+            colorScheme:
+                lightDynamic ??
+                ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          ),
+          darkTheme: ThemeData(
+            colorScheme:
+                darkDynamic ??
+                ColorScheme.fromSeed(
+                  seedColor: Colors.deepPurple,
+                  brightness: Brightness.dark,
+                ),
+          ),
+          home: const ChecklistsScreen(),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,5 @@
 import 'package:checklist/database/database.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 /// A draft item. The key gives each row a stable identity (titles can repeat),
