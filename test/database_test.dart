@@ -180,6 +180,65 @@ void main() {
       expect(await db.getCheckedItemIds(child.id), isEmpty);
     });
 
+    test('on an unlinked parent\'s items are removed, down the tree', () async {
+      final root = await list('Root', ['r']);
+      final base = await list('Base', ['b']);
+      final child = await list('Child', ['c']);
+      await db.setChecklistParents(base.id, [root.id]);
+      await db.setChecklistParents(child.id, [base.id]);
+      final [r] = await items(root);
+      final [b] = await items(base);
+      final [c] = await items(child);
+      for (final item in [r, b, c]) {
+        await db.setItemChecked(child.id, item.id, true);
+      }
+
+      await db.setChecklistParents(base.id, []);
+      expect(await db.getCheckedItemIds(child.id), {b.id, c.id});
+
+      await db.setChecklistParents(child.id, []);
+      expect(await db.getCheckedItemIds(child.id), {c.id});
+    });
+
+    test('on grandparent items are removed when the base is deleted', () async {
+      final root = await list('Root', ['r']);
+      final base = await list('Base', ['b']);
+      final child = await list('Child', ['c']);
+      await db.setChecklistParents(base.id, [root.id]);
+      await db.setChecklistParents(child.id, [base.id]);
+      final [r] = await items(root);
+      final [c] = await items(child);
+      await db.setItemChecked(child.id, r.id, true);
+      await db.setItemChecked(child.id, c.id, true);
+
+      await db.deleteChecklist(base.id);
+
+      expect(await db.getCheckedItemIds(child.id), {c.id});
+    });
+
+    test('of grandchildren carry over to the copies too', () async {
+      final base = await list('Base', ['x', 'y']);
+      final child = await list('Child', ['c']);
+      final grandchild = await list('Grandchild', ['g']);
+      await db.setChecklistParents(child.id, [base.id]);
+      await db.setChecklistParents(grandchild.id, [child.id]);
+      final [x, _] = await items(base);
+      await db.setItemChecked(grandchild.id, x.id, true);
+
+      await db.deleteChecklist(base.id, copyToChildren: true);
+
+      final copies = await items(child);
+      final checked = await db.getCheckedItemIds(grandchild.id);
+      expect(
+        [
+          for (final i in copies)
+            if (checked.contains(i.id)) i.title,
+        ],
+        ['x'],
+      );
+      expect(await db.getCheckedItemIds(child.id), isEmpty);
+    });
+
     test('carry over to the copies when a base list is deleted', () async {
       final base = await list('Base', ['x', 'y']);
       final child = await list('Child', ['c']);

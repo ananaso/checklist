@@ -86,7 +86,12 @@ class AppDatabase extends _$AppDatabase {
         final parentIds = await getChecklistParentIds(id);
         for (final child in await getChildren(id)) {
           final existing = await getChecklistItems(child.id);
-          final checkedIds = await getCheckedItemIds(child.id);
+          // The child and everything below it saw these items through it.
+          final viewers = [child.id, ...await getDescendantIds(child.id)];
+          final checkedIds = {
+            for (final viewer in viewers)
+              viewer: await getCheckedItemIds(viewer),
+          };
           for (final (i, item) in items.indexed) {
             final copy = await into(checklistItems).insertReturning(
               ChecklistItemsCompanion.insert(
@@ -95,9 +100,11 @@ class AppDatabase extends _$AppDatabase {
                 position: existing.length + i,
               ),
             );
-            // Keep the child's progress on items it showed before the copy.
-            if (checkedIds.contains(item.id)) {
-              await setItemChecked(child.id, copy.id, true);
+            // Keep their progress on items they showed before the copy.
+            for (final viewer in viewers) {
+              if (checkedIds[viewer]!.contains(item.id)) {
+                await setItemChecked(viewer, copy.id, true);
+              }
             }
           }
           final merged = <int>{};
@@ -111,7 +118,10 @@ class AppDatabase extends _$AppDatabase {
           await setChecklistParents(child.id, merged.toList());
         }
       }
+      final descendants = await getDescendantIds(id);
       await (delete(checklists)..where((c) => c.id.equals(id))).go();
+      // Lists below may have lost items inherited through this one.
+      await _pruneChecks(descendants);
     });
   }
 
@@ -141,7 +151,24 @@ class AppDatabase extends _$AppDatabase {
             ),
         ]);
       });
+      // Dropping a parent also drops its items from every list below.
+      await _pruneChecks([childId, ...await getDescendantIds(childId)]);
     });
+  }
+
+  /// Removes the checks of each list in [checklistIds] on items that list no
+  /// longer shows, such as those of an ancestor it stopped inheriting from.
+  Future<void> _pruneChecks(Iterable<int> checklistIds) async {
+    for (final id in checklistIds) {
+      final visible = {
+        for (final section in await _loadSections(id))
+          for (final item in section.items) item.id,
+      };
+      await (delete(
+            checklistChecks,
+          )..where((c) => c.checklistId.equals(id) & c.itemId.isNotIn(visible)))
+          .go();
+    }
   }
 
   /// The lists that inherit directly from [id], sorted by title.
