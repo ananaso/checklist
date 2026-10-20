@@ -283,24 +283,27 @@ void main() {
       expect(await db.getCheckedItemIds(l.id), {b.id});
     });
 
-    test('into a child moves the items and prunes the list\'s checks', () async {
-      final l = await list('L', ['a', 'b', 'c']);
-      final [a, b, _] = await db.getChecklistItems(l.id);
-      await db.setItemChecked(l.id, a.id, true);
-      await db.setItemChecked(l.id, b.id, true);
+    test(
+      'into a child moves the items and prunes the list\'s checks',
+      () async {
+        final l = await list('L', ['a', 'b', 'c']);
+        final [a, b, _] = await db.getChecklistItems(l.id);
+        await db.setItemChecked(l.id, a.id, true);
+        await db.setItemChecked(l.id, b.id, true);
 
-      final c = await db.splitChecklist(
-        l.id,
-        await ids(l, ['b']),
-        title: 'C',
-        direction: SplitDirection.child,
-      );
+        final c = await db.splitChecklist(
+          l.id,
+          await ids(l, ['b']),
+          title: 'C',
+          direction: SplitDirection.child,
+        );
 
-      expect(await view(l), ['L: a, c']);
-      expect(await view(c), ['L: a, c', 'C: b']);
-      expect(await db.getCheckedItemIds(l.id), {a.id});
-      expect(await db.getCheckedItemIds(c.id), isEmpty);
-    });
+        expect(await view(l), ['L: a, c']);
+        expect(await view(c), ['L: a, c', 'C: b']);
+        expect(await db.getCheckedItemIds(l.id), {a.id});
+        expect(await db.getCheckedItemIds(c.id), isEmpty);
+      },
+    );
 
     test('into a child re-points existing children to it', () async {
       final l = await list('L', ['a', 'b']);
@@ -322,7 +325,102 @@ void main() {
     });
   });
 
+  group('groups', () {
+    test('lists can be filed, moved and ungrouped', () async {
+      final packing = await db.createGroup('Packing');
+      final a = await list('A');
+      await db.setChecklistGroup(a.id, packing.id);
+      expect((await db.watchChecklists().first).single.groupId, packing.id);
+
+      await db.setChecklistGroup(a.id, null);
+      expect((await db.watchChecklists().first).single.groupId, isNull);
+    });
+
+    test('groups are sorted by title ignoring case', () async {
+      await db.createGroup('work');
+      await db.createGroup('Packing');
+      expect((await db.watchGroups().first).map((g) => g.title), [
+        'Packing',
+        'work',
+      ]);
+    });
+
+    test('renaming and collapsing a group', () async {
+      final g = await db.createGroup('Pack');
+      await db.renameGroup(g.id, 'Packing');
+      await db.setGroupCollapsed(g.id, true);
+      final saved = (await db.watchGroups().first).single;
+      expect((saved.title, saved.isCollapsed), ('Packing', true));
+    });
+
+    test('deleting a group keeps its lists, ungrouped', () async {
+      final g = await db.createGroup('Packing');
+      final a = await list('A', ['x']);
+      await db.setChecklistGroup(a.id, g.id);
+
+      await db.deleteGroup(g.id);
+
+      final lists = await db.watchChecklists().first;
+      expect(lists.map((c) => (c.title, c.groupId)), [('A', null)]);
+      expect(await view(a), ['A: x']);
+    });
+
+    test('sections label their source with its group', () async {
+      final packing = await db.createGroup('Packing');
+      final base = await list('Base', ['x']);
+      final child = await list('Child', ['c']);
+      await db.setChecklistGroup(base.id, packing.id);
+      await db.setChecklistParents(child.id, [base.id]);
+
+      Future<List<String>> labels() async => [
+        for (final s in await db.watchChecklistSections(child.id).first)
+          s.label,
+      ];
+      expect(await labels(), ['Base (Packing)', 'Child']);
+
+      await db.renameGroup(packing.id, 'Trips');
+      expect(await labels(), ['Base (Trips)', 'Child']);
+    });
+
+    test('lists in different groups can still inherit', () async {
+      final packing = await db.createGroup('Packing');
+      final base = await list('Base', ['x']);
+      final child = await list('Child', ['c']);
+      await db.setChecklistGroup(base.id, packing.id);
+      await db.setChecklistParents(child.id, [base.id]);
+
+      expect(await view(child), ['Base: x', 'Child: c']);
+    });
+  });
+
   group('backup', () {
+    test('groups round-trip through a backup', () async {
+      final g = await db.createGroup('Packing');
+      await db.setGroupCollapsed(g.id, true);
+      final a = await list('A');
+      await db.setChecklistGroup(a.id, g.id);
+      final json = await db.exportBackup();
+
+      final other = AppDatabase(NativeDatabase.memory());
+      addTearDown(other.close);
+      await other.importBackup(json);
+
+      expect((await other.watchGroups().first).single.isCollapsed, isTrue);
+      expect((await other.watchChecklists().first).single.groupId, g.id);
+      expect(await other.exportBackup(), json);
+    });
+
+    test('imports backups made before groups existed', () async {
+      await db.importBackup(
+        '{"format":"checklist-backup","version":1,'
+        '"checklists":[{"id":1,"title":"Old","createdAt":0}],'
+        '"items":[],"parents":[],"checks":[]}',
+      );
+      final lists = await db.watchChecklists().first;
+      expect(lists.map((c) => (c.title, c.groupId)), [('Old', null)]);
+      expect(await db.watchGroups().first, isEmpty);
+    });
+
     test('export then import into a fresh database round-trips', () async {
       final base = await list('Base', ['x', 'y']);
       final child = await list('Child', ['c']);

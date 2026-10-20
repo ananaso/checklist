@@ -23,6 +23,120 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     listen: false,
   ).watchChecklists();
 
+  late final Stream<List<ChecklistGroup>> _groups = Provider.of<AppDatabase>(
+    context,
+    listen: false,
+  ).watchGroups();
+
+  Future<void> _createGroup() async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => const ChecklistNameDialog(
+        heading: 'New group',
+        confirmLabel: 'Create',
+      ),
+    );
+    if (title == null) return;
+    await database.createGroup(title);
+  }
+
+  Future<void> _renameGroup(ChecklistGroup group) async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final title = await showDialog<String>(
+      context: context,
+      builder: (context) => ChecklistNameDialog(
+        heading: 'Rename group',
+        confirmLabel: 'Rename',
+        initialTitle: group.title,
+      ),
+    );
+    if (title == null || title == group.title) return;
+    await database.renameGroup(group.id, title);
+  }
+
+  Future<void> _deleteGroup(ChecklistGroup group) {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    return deleteGroupWithConfirmation(context, database, group);
+  }
+
+  Future<void> _moveToGroup(Checklist checklist) {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    return moveChecklistToGroup(context, database, checklist);
+  }
+
+  Widget _groupHeader(ChecklistGroup group, int count) {
+    return ListTile(
+      leading: Icon(
+        group.isCollapsed ? Icons.chevron_right : Icons.expand_more,
+      ),
+      title: Text(
+        '${group.title} ($count)',
+        style: Theme.of(context).textTheme.titleSmall,
+      ),
+      trailing: PopupMenuButton<void>(
+        tooltip: 'More',
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            onTap: () => _renameGroup(group),
+            child: const Text('Rename'),
+          ),
+          PopupMenuItem(
+            onTap: () => _deleteGroup(group),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+      onTap: () => Provider.of<AppDatabase>(
+        context,
+        listen: false,
+      ).setGroupCollapsed(group.id, !group.isCollapsed),
+    );
+  }
+
+  Widget _checklistTile(Checklist checklist, {bool indented = false}) {
+    return ListTile(
+      contentPadding: indented
+          ? const EdgeInsetsDirectional.only(start: 32, end: 16)
+          : null,
+      leading: checklist.isFavorite ? const Icon(Icons.star) : null,
+      title: Text(checklist.title),
+      trailing: PopupMenuButton<void>(
+        tooltip: 'More',
+        itemBuilder: (context) => [
+          PopupMenuItem(
+            onTap: () => Provider.of<AppDatabase>(
+              context,
+              listen: false,
+            ).setChecklistFavorite(checklist.id, !checklist.isFavorite),
+            child: Text(checklist.isFavorite ? 'Unfavorite' : 'Favorite'),
+          ),
+          PopupMenuItem(
+            onTap: () => _rename(checklist),
+            child: const Text('Rename'),
+          ),
+          PopupMenuItem(
+            onTap: () => _moveToGroup(checklist),
+            child: const Text('Move to group…'),
+          ),
+          PopupMenuItem(
+            onTap: () => _editParents(checklist),
+            child: const Text('Inherits from…'),
+          ),
+          PopupMenuItem(
+            onTap: () => _delete(checklist),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => ChecklistScreen(checklist: checklist),
+        ),
+      ),
+    );
+  }
+
   Future<void> _create() async {
     final database = Provider.of<AppDatabase>(context, listen: false);
     final navigator = Navigator.of(context);
@@ -138,6 +252,10 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
           PopupMenuButton<void>(
             tooltip: 'More',
             itemBuilder: (context) => [
+              PopupMenuItem(
+                onTap: _createGroup,
+                child: const Text('New group…'),
+              ),
               PopupMenuItem(onTap: _export, child: const Text('Export…')),
               PopupMenuItem(onTap: _import, child: const Text('Import…')),
             ],
@@ -145,59 +263,38 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
         ],
       ),
       body: StreamBuilder(
-        stream: _checklists,
-        builder: (context, snapshot) {
-          final checklists = snapshot.data;
-          if (checklists == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (checklists.isEmpty) {
-            return const Center(child: Text('No checklists yet'));
-          }
-          return ListView.builder(
-            itemCount: checklists.length,
-            itemBuilder: (context, index) {
-              final checklist = checklists[index];
-              return ListTile(
-                leading: checklist.isFavorite
-                    ? const Icon(Icons.star)
-                    : null,
-                title: Text(checklist.title),
-                trailing: PopupMenuButton<void>(
-                  tooltip: 'More',
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      onTap: () => Provider.of<AppDatabase>(
-                        context,
-                        listen: false,
-                      ).setChecklistFavorite(
-                        checklist.id,
-                        !checklist.isFavorite,
-                      ),
-                      child: Text(
-                        checklist.isFavorite ? 'Unfavorite' : 'Favorite',
-                      ),
-                    ),
-                    PopupMenuItem(
-                      onTap: () => _rename(checklist),
-                      child: const Text('Rename'),
-                    ),
-                    PopupMenuItem(
-                      onTap: () => _editParents(checklist),
-                      child: const Text('Inherits from…'),
-                    ),
-                    PopupMenuItem(
-                      onTap: () => _delete(checklist),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => ChecklistScreen(checklist: checklist),
+        stream: _groups,
+        builder: (context, groupsSnapshot) {
+          return StreamBuilder(
+            stream: _checklists,
+            builder: (context, snapshot) {
+              final groups = groupsSnapshot.data;
+              final checklists = snapshot.data;
+              if (groups == null || checklists == null) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (checklists.isEmpty && groups.isEmpty) {
+                return const Center(child: Text('No checklists yet'));
+              }
+              // Favorites lead, from any group; then each group's other lists
+              // under its header, then the ungrouped ones.
+              final rows = <Widget>[
+                for (final c in checklists)
+                  if (c.isFavorite) _checklistTile(c),
+                for (final group in groups) ...[
+                  _groupHeader(
+                    group,
+                    checklists.where((c) => c.groupId == group.id).length,
                   ),
-                ),
-              );
+                  if (!group.isCollapsed)
+                    for (final c in checklists)
+                      if (c.groupId == group.id && !c.isFavorite)
+                        _checklistTile(c, indented: true),
+                ],
+                for (final c in checklists)
+                  if (!c.isFavorite && c.groupId == null) _checklistTile(c),
+              ];
+              return ListView(children: rows);
             },
           );
         },

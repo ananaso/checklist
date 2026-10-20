@@ -87,14 +87,37 @@ Future<void> editChecklistParents(
   final current = await database.getChecklistParentIds(checklist.id);
   if (!context.mounted) return;
 
-  final candidates = [
+  final eligible = [
     for (final c in all)
       if (c.id != checklist.id && !descendants.contains(c.id)) c,
   ];
+  // Lists in the same group are the likeliest picks, so they come first.
+  final groupId = checklist.groupId;
+  final sameGroup = [
+    if (groupId != null)
+      for (final c in eligible)
+        if (c.groupId == groupId) c,
+  ];
+  final candidates = [
+    ...sameGroup,
+    for (final c in eligible)
+      if (groupId == null || c.groupId != groupId) c,
+  ];
+  final groupTitle = groupId == null
+      ? null
+      : (await database.watchGroups().first)
+            .where((g) => g.id == groupId)
+            .firstOrNull
+            ?.title;
+  if (!context.mounted) return;
   final chosen = await showDialog<Set<int>>(
     context: context,
-    builder: (context) =>
-        _ParentPickerDialog(candidates: candidates, initial: current.toSet()),
+    builder: (context) => _ParentPickerDialog(
+      candidates: candidates,
+      initial: current.toSet(),
+      groupTitle: groupTitle,
+      sameGroupCount: sameGroup.length,
+    ),
   );
   if (chosen == null) return;
   // Keep the existing parents' order; new ones go after them.
@@ -107,12 +130,20 @@ Future<void> editChecklistParents(
 }
 
 /// Multi-select of lists to inherit from; pops with the chosen ids, or null if
-/// cancelled.
+/// cancelled. The first [sameGroupCount] candidates are in the group titled
+/// [groupTitle]; when the rest are shown too, the two parts get headings.
 class _ParentPickerDialog extends StatefulWidget {
-  const _ParentPickerDialog({required this.candidates, required this.initial});
+  const _ParentPickerDialog({
+    required this.candidates,
+    required this.initial,
+    this.groupTitle,
+    this.sameGroupCount = 0,
+  });
 
   final List<Checklist> candidates;
   final Set<int> initial;
+  final String? groupTitle;
+  final int sameGroupCount;
 
   @override
   State<_ParentPickerDialog> createState() => _ParentPickerDialogState();
@@ -121,8 +152,17 @@ class _ParentPickerDialog extends StatefulWidget {
 class _ParentPickerDialogState extends State<_ParentPickerDialog> {
   late final Set<int> _chosen = {...widget.initial};
 
+  Widget _heading(String text) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+    child: Text(text, style: Theme.of(context).textTheme.labelLarge),
+  );
+
   @override
   Widget build(BuildContext context) {
+    final split =
+        widget.groupTitle != null &&
+        widget.sameGroupCount > 0 &&
+        widget.sameGroupCount < widget.candidates.length;
     return AlertDialog(
       title: const Text('Inherit items from'),
       content: widget.candidates.isEmpty
@@ -132,7 +172,10 @@ class _ParentPickerDialogState extends State<_ParentPickerDialog> {
               child: ListView(
                 shrinkWrap: true,
                 children: [
-                  for (final c in widget.candidates)
+                  for (final (i, c) in widget.candidates.indexed) ...[
+                    if (split && i == 0) _heading('In ${widget.groupTitle}'),
+                    if (split && i == widget.sameGroupCount)
+                      _heading('Other lists'),
                     CheckboxListTile(
                       title: Text(c.title),
                       value: _chosen.contains(c.id),
@@ -145,6 +188,7 @@ class _ParentPickerDialogState extends State<_ParentPickerDialog> {
                         }
                       }),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -160,6 +204,108 @@ class _ParentPickerDialogState extends State<_ParentPickerDialog> {
       ],
     );
   }
+}
+
+/// Asks before deleting [group] and deletes it if confirmed. Its checklists
+/// aren't deleted; they just become ungrouped.
+Future<void> deleteGroupWithConfirmation(
+  BuildContext context,
+  AppDatabase database,
+  ChecklistGroup group,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Delete group?'),
+      content: Text(
+        '"${group.title}" will be deleted. Its checklists are kept and '
+        'become ungrouped.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Delete'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed == true) await database.deleteGroup(group.id);
+}
+
+typedef _GroupChoice = ({int? groupId, bool createNew});
+
+/// Lets the user file [checklist] under a group, no group, or a new group,
+/// and saves the choice.
+Future<void> moveChecklistToGroup(
+  BuildContext context,
+  AppDatabase database,
+  Checklist checklist,
+) async {
+  final groups = await database.watchGroups().first;
+  if (!context.mounted) return;
+
+  final choice = await showDialog<_GroupChoice>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Move to group'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              leading: checklist.groupId == null
+                  ? const Icon(Icons.check)
+                  : null,
+              title: const Text('No group'),
+              onTap: () =>
+                  Navigator.of(context).pop((groupId: null, createNew: false)),
+            ),
+            for (final group in groups)
+              ListTile(
+                leading: checklist.groupId == group.id
+                    ? const Icon(Icons.check)
+                    : null,
+                title: Text(group.title),
+                onTap: () => Navigator.of(
+                  context,
+                ).pop((groupId: group.id, createNew: false)),
+              ),
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text('New group…'),
+              onTap: () =>
+                  Navigator.of(context).pop((groupId: null, createNew: true)),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+      ],
+    ),
+  );
+  if (choice == null) return;
+  if (!choice.createNew) {
+    await database.setChecklistGroup(checklist.id, choice.groupId);
+    return;
+  }
+  if (!context.mounted) return;
+  final title = await showDialog<String>(
+    context: context,
+    builder: (context) =>
+        const ChecklistNameDialog(heading: 'New group', confirmLabel: 'Create'),
+  );
+  if (title == null) return;
+  final group = await database.createGroup(title);
+  await database.setChecklistGroup(checklist.id, group.id);
 }
 
 typedef _SplitChoice = ({

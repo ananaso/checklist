@@ -13,19 +13,27 @@ part 'database.g.dart';
 /// One group of items in a checklist's view: the items of [source], which is
 /// either the checklist itself or one of its ancestors.
 class ChecklistSection {
-  const ChecklistSection(this.source, this.items);
+  const ChecklistSection(this.source, this.items, [this.groupTitle]);
 
   final Checklist source;
   final List<ChecklistItem> items;
+
+  /// The title of the group [source] is filed under, if any.
+  final String? groupTitle;
+
+  /// [source]'s title, with its group so same-named lists can be told apart.
+  String get label =>
+      groupTitle == null ? source.title : '${source.title} ($groupTitle)';
 
   @override
   bool operator ==(Object other) =>
       other is ChecklistSection &&
       other.source == source &&
+      other.groupTitle == groupTitle &&
       listEquals(other.items, items);
 
   @override
-  int get hashCode => Object.hash(source, Object.hashAll(items));
+  int get hashCode => Object.hash(source, groupTitle, Object.hashAll(items));
 }
 
 /// Which side of a checklist the list created by [AppDatabase.splitChecklist]
@@ -33,7 +41,13 @@ class ChecklistSection {
 enum SplitDirection { parent, child }
 
 @DriftDatabase(
-  tables: [Checklists, ChecklistItems, ChecklistParents, ChecklistChecks],
+  tables: [
+    ChecklistGroups,
+    Checklists,
+    ChecklistItems,
+    ChecklistParents,
+    ChecklistChecks,
+  ],
 ) // , include: {'triggers.drift'}
 class AppDatabase extends _$AppDatabase {
   // After generating code, this class needs to define a `schemaVersion` getter
@@ -42,7 +56,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -50,6 +64,10 @@ class AppDatabase extends _$AppDatabase {
       onUpgrade: (m, from, to) async {
         if (from < 2) {
           await m.addColumn(checklists, checklists.isFavorite);
+        }
+        if (from < 3) {
+          await m.createTable(checklistGroups);
+          await m.addColumn(checklists, checklists.groupId);
         }
       },
       beforeOpen: (openingDetails) async {
@@ -96,6 +114,46 @@ class AppDatabase extends _$AppDatabase {
     return (update(checklists)..where((c) => c.id.equals(id))).write(
       ChecklistsCompanion(isFavorite: Value(isFavorite)),
     );
+  }
+
+  /// Files a checklist under [groupId], or under no group if null.
+  Future<void> setChecklistGroup(int id, int? groupId) {
+    return (update(checklists)..where((c) => c.id.equals(id))).write(
+      ChecklistsCompanion(groupId: Value(groupId)),
+    );
+  }
+
+  Future<ChecklistGroup> createGroup(String title) {
+    return into(
+      checklistGroups,
+    ).insertReturning(ChecklistGroupsCompanion.insert(title: title));
+  }
+
+  Future<void> renameGroup(int id, String title) {
+    return (update(checklistGroups)..where((g) => g.id.equals(id))).write(
+      ChecklistGroupsCompanion(title: Value(title)),
+    );
+  }
+
+  Future<void> setGroupCollapsed(int id, bool isCollapsed) {
+    return (update(checklistGroups)..where((g) => g.id.equals(id))).write(
+      ChecklistGroupsCompanion(isCollapsed: Value(isCollapsed)),
+    );
+  }
+
+  /// Deletes a group; its checklists become ungrouped.
+  Future<void> deleteGroup(int id) {
+    return (delete(checklistGroups)..where((g) => g.id.equals(id))).go();
+  }
+
+  /// Streams all groups sorted alphabetically by title (ignoring case),
+  /// re-emitting on changes.
+  Stream<List<ChecklistGroup>> watchGroups() {
+    return (select(checklistGroups)..orderBy([
+          (g) => OrderingTerm.asc(g.title.collate(Collate.noCase)),
+          (g) => OrderingTerm.asc(g.id),
+        ]))
+        .watch();
   }
 
   /// Deletes a checklist; its items and inheritance links go with it via the
@@ -182,13 +240,14 @@ class AppDatabase extends _$AppDatabase {
       final created = await createChecklist(title);
 
       Future<void> place(ChecklistItem item, int listId, int position) {
-        return (update(checklistItems)..where((ci) => ci.id.equals(item.id)))
-            .write(
-              ChecklistItemsCompanion(
-                checklistId: Value(listId),
-                position: Value(position),
-              ),
-            );
+        return (update(
+          checklistItems,
+        )..where((ci) => ci.id.equals(item.id))).write(
+          ChecklistItemsCompanion(
+            checklistId: Value(listId),
+            position: Value(position),
+          ),
+        );
       }
 
       for (final (i, item) in moved.indexed) {
@@ -327,6 +386,7 @@ class AppDatabase extends _$AppDatabase {
         emit();
         subscription = tableUpdates(
           TableUpdateQuery.onAllTables([
+            checklistGroups,
             checklists,
             checklistItems,
             checklistParents,
@@ -357,7 +417,15 @@ class AppDatabase extends _$AppDatabase {
       )..where((c) => c.id.equals(listId))).getSingleOrNull();
       // A list deleted mid-load, or the one being viewed after its deletion.
       if (list == null) continue;
-      sections.add(ChecklistSection(list, await getChecklistItems(listId)));
+      final groupId = list.groupId;
+      final group = groupId == null
+          ? null
+          : await (select(
+              checklistGroups,
+            )..where((g) => g.id.equals(groupId))).getSingleOrNull();
+      sections.add(
+        ChecklistSection(list, await getChecklistItems(listId), group?.title),
+      );
     }
     return sections;
   }
@@ -491,12 +559,15 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  /// Serializes every checklist, item, inheritance link and check to a JSON
-  /// string that [importBackup] can load back.
+  /// Serializes every group, checklist, item, inheritance link and check to a
+  /// JSON string that [importBackup] can load back.
   Future<String> exportBackup() async {
     final data = {
       'format': _backupFormat,
       'version': _backupVersion,
+      'groups': [
+        for (final r in await select(checklistGroups).get()) r.toJson(),
+      ],
       'checklists': [
         for (final r in await select(checklists).get()) r.toJson(),
       ],
@@ -533,10 +604,12 @@ class AppDatabase extends _$AppDatabase {
     }
 
     List<T> rows<T>(String key, T Function(Map<String, dynamic>) parse) => [
-      for (final row in data[key] as List) parse(row as Map<String, dynamic>),
+      for (final row in (data[key] ?? const []) as List)
+        parse(row as Map<String, dynamic>),
     ];
 
-    // Backups made before favorites existed have no such field.
+    // Backups made before favorites or groups existed lack those fields.
+    final groups = rows('groups', ChecklistGroup.fromJson);
     final lists = rows(
       'checklists',
       (row) => Checklist.fromJson({'isFavorite': false, ...row}),
@@ -548,7 +621,9 @@ class AppDatabase extends _$AppDatabase {
     await transaction(() async {
       // Cascades to items, links and checks.
       await delete(checklists).go();
+      await delete(checklistGroups).go();
       await batch((b) {
+        b.insertAll(checklistGroups, groups);
         b.insertAll(checklists, lists);
         b.insertAll(checklistItems, items);
         b.insertAll(checklistParents, parents);
@@ -559,4 +634,4 @@ class AppDatabase extends _$AppDatabase {
 }
 
 const _backupFormat = 'checklist-backup';
-const _backupVersion = 1;
+const _backupVersion = 2;

@@ -3,6 +3,310 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
+class $ChecklistGroupsTable extends ChecklistGroups
+    with TableInfo<$ChecklistGroupsTable, ChecklistGroup> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChecklistGroupsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isCollapsedMeta = const VerificationMeta(
+    'isCollapsed',
+  );
+  @override
+  late final GeneratedColumn<bool> isCollapsed = GeneratedColumn<bool>(
+    'is_collapsed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_collapsed" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, createdAt, title, isCollapsed];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'checklist_groups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChecklistGroup> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('is_collapsed')) {
+      context.handle(
+        _isCollapsedMeta,
+        isCollapsed.isAcceptableOrUnknown(
+          data['is_collapsed']!,
+          _isCollapsedMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChecklistGroup map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChecklistGroup(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      isCollapsed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_collapsed'],
+      )!,
+    );
+  }
+
+  @override
+  $ChecklistGroupsTable createAlias(String alias) {
+    return $ChecklistGroupsTable(attachedDatabase, alias);
+  }
+}
+
+class ChecklistGroup extends DataClass implements Insertable<ChecklistGroup> {
+  final int id;
+  final DateTime createdAt;
+  final String title;
+
+  /// Whether the group's checklists are hidden on the home screen.
+  final bool isCollapsed;
+  const ChecklistGroup({
+    required this.id,
+    required this.createdAt,
+    required this.title,
+    required this.isCollapsed,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['title'] = Variable<String>(title);
+    map['is_collapsed'] = Variable<bool>(isCollapsed);
+    return map;
+  }
+
+  ChecklistGroupsCompanion toCompanion(bool nullToAbsent) {
+    return ChecklistGroupsCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      title: Value(title),
+      isCollapsed: Value(isCollapsed),
+    );
+  }
+
+  factory ChecklistGroup.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChecklistGroup(
+      id: serializer.fromJson<int>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      title: serializer.fromJson<String>(json['title']),
+      isCollapsed: serializer.fromJson<bool>(json['isCollapsed']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'title': serializer.toJson<String>(title),
+      'isCollapsed': serializer.toJson<bool>(isCollapsed),
+    };
+  }
+
+  ChecklistGroup copyWith({
+    int? id,
+    DateTime? createdAt,
+    String? title,
+    bool? isCollapsed,
+  }) => ChecklistGroup(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    title: title ?? this.title,
+    isCollapsed: isCollapsed ?? this.isCollapsed,
+  );
+  ChecklistGroup copyWithCompanion(ChecklistGroupsCompanion data) {
+    return ChecklistGroup(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      title: data.title.present ? data.title.value : this.title,
+      isCollapsed: data.isCollapsed.present
+          ? data.isCollapsed.value
+          : this.isCollapsed,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChecklistGroup(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('title: $title, ')
+          ..write('isCollapsed: $isCollapsed')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, createdAt, title, isCollapsed);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChecklistGroup &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.title == this.title &&
+          other.isCollapsed == this.isCollapsed);
+}
+
+class ChecklistGroupsCompanion extends UpdateCompanion<ChecklistGroup> {
+  final Value<int> id;
+  final Value<DateTime> createdAt;
+  final Value<String> title;
+  final Value<bool> isCollapsed;
+  const ChecklistGroupsCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.title = const Value.absent(),
+    this.isCollapsed = const Value.absent(),
+  });
+  ChecklistGroupsCompanion.insert({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    required String title,
+    this.isCollapsed = const Value.absent(),
+  }) : title = Value(title);
+  static Insertable<ChecklistGroup> custom({
+    Expression<int>? id,
+    Expression<DateTime>? createdAt,
+    Expression<String>? title,
+    Expression<bool>? isCollapsed,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (title != null) 'title': title,
+      if (isCollapsed != null) 'is_collapsed': isCollapsed,
+    });
+  }
+
+  ChecklistGroupsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? createdAt,
+    Value<String>? title,
+    Value<bool>? isCollapsed,
+  }) {
+    return ChecklistGroupsCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      title: title ?? this.title,
+      isCollapsed: isCollapsed ?? this.isCollapsed,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (isCollapsed.present) {
+      map['is_collapsed'] = Variable<bool>(isCollapsed.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChecklistGroupsCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('title: $title, ')
+          ..write('isCollapsed: $isCollapsed')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ChecklistsTable extends Checklists
     with TableInfo<$ChecklistsTable, Checklist> {
   @override
@@ -58,8 +362,28 @@ class $ChecklistsTable extends Checklists
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, createdAt, title, isFavorite];
+  late final GeneratedColumn<int> groupId = GeneratedColumn<int>(
+    'group_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES checklist_groups (id) ON DELETE SET NULL',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    createdAt,
+    title,
+    isFavorite,
+    groupId,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -95,6 +419,12 @@ class $ChecklistsTable extends Checklists
         isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
       );
     }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    }
     return context;
   }
 
@@ -120,6 +450,10 @@ class $ChecklistsTable extends Checklists
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
       )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}group_id'],
+      ),
     );
   }
 
@@ -136,11 +470,16 @@ class Checklist extends DataClass implements Insertable<Checklist> {
 
   /// Favorites are listed before all other checklists.
   final bool isFavorite;
+
+  /// The group this checklist is filed under, if any. Deleting the group
+  /// leaves the checklist ungrouped.
+  final int? groupId;
   const Checklist({
     required this.id,
     required this.createdAt,
     required this.title,
     required this.isFavorite,
+    this.groupId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -149,6 +488,9 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     map['created_at'] = Variable<DateTime>(createdAt);
     map['title'] = Variable<String>(title);
     map['is_favorite'] = Variable<bool>(isFavorite);
+    if (!nullToAbsent || groupId != null) {
+      map['group_id'] = Variable<int>(groupId);
+    }
     return map;
   }
 
@@ -158,6 +500,9 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       createdAt: Value(createdAt),
       title: Value(title),
       isFavorite: Value(isFavorite),
+      groupId: groupId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(groupId),
     );
   }
 
@@ -171,6 +516,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       title: serializer.fromJson<String>(json['title']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      groupId: serializer.fromJson<int?>(json['groupId']),
     );
   }
   @override
@@ -181,6 +527,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'title': serializer.toJson<String>(title),
       'isFavorite': serializer.toJson<bool>(isFavorite),
+      'groupId': serializer.toJson<int?>(groupId),
     };
   }
 
@@ -189,11 +536,13 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     DateTime? createdAt,
     String? title,
     bool? isFavorite,
+    Value<int?> groupId = const Value.absent(),
   }) => Checklist(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
     title: title ?? this.title,
     isFavorite: isFavorite ?? this.isFavorite,
+    groupId: groupId.present ? groupId.value : this.groupId,
   );
   Checklist copyWithCompanion(ChecklistsCompanion data) {
     return Checklist(
@@ -203,6 +552,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
     );
   }
 
@@ -212,13 +562,14 @@ class Checklist extends DataClass implements Insertable<Checklist> {
           ..write('id: $id, ')
           ..write('createdAt: $createdAt, ')
           ..write('title: $title, ')
-          ..write('isFavorite: $isFavorite')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('groupId: $groupId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, createdAt, title, isFavorite);
+  int get hashCode => Object.hash(id, createdAt, title, isFavorite, groupId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -226,7 +577,8 @@ class Checklist extends DataClass implements Insertable<Checklist> {
           other.id == this.id &&
           other.createdAt == this.createdAt &&
           other.title == this.title &&
-          other.isFavorite == this.isFavorite);
+          other.isFavorite == this.isFavorite &&
+          other.groupId == this.groupId);
 }
 
 class ChecklistsCompanion extends UpdateCompanion<Checklist> {
@@ -234,29 +586,34 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
   final Value<DateTime> createdAt;
   final Value<String> title;
   final Value<bool> isFavorite;
+  final Value<int?> groupId;
   const ChecklistsCompanion({
     this.id = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.title = const Value.absent(),
     this.isFavorite = const Value.absent(),
+    this.groupId = const Value.absent(),
   });
   ChecklistsCompanion.insert({
     this.id = const Value.absent(),
     this.createdAt = const Value.absent(),
     required String title,
     this.isFavorite = const Value.absent(),
+    this.groupId = const Value.absent(),
   }) : title = Value(title);
   static Insertable<Checklist> custom({
     Expression<int>? id,
     Expression<DateTime>? createdAt,
     Expression<String>? title,
     Expression<bool>? isFavorite,
+    Expression<int>? groupId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (createdAt != null) 'created_at': createdAt,
       if (title != null) 'title': title,
       if (isFavorite != null) 'is_favorite': isFavorite,
+      if (groupId != null) 'group_id': groupId,
     });
   }
 
@@ -265,12 +622,14 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     Value<DateTime>? createdAt,
     Value<String>? title,
     Value<bool>? isFavorite,
+    Value<int?>? groupId,
   }) {
     return ChecklistsCompanion(
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
       title: title ?? this.title,
       isFavorite: isFavorite ?? this.isFavorite,
+      groupId: groupId ?? this.groupId,
     );
   }
 
@@ -289,6 +648,9 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
+    if (groupId.present) {
+      map['group_id'] = Variable<int>(groupId.value);
+    }
     return map;
   }
 
@@ -298,7 +660,8 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
           ..write('id: $id, ')
           ..write('createdAt: $createdAt, ')
           ..write('title: $title, ')
-          ..write('isFavorite: $isFavorite')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('groupId: $groupId')
           ..write(')'))
         .toString();
   }
@@ -1211,6 +1574,9 @@ class ChecklistChecksCompanion extends UpdateCompanion<ChecklistCheck> {
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $ChecklistGroupsTable checklistGroups = $ChecklistGroupsTable(
+    this,
+  );
   late final $ChecklistsTable checklists = $ChecklistsTable(this);
   late final $ChecklistItemsTable checklistItems = $ChecklistItemsTable(this);
   late final $ChecklistParentsTable checklistParents = $ChecklistParentsTable(
@@ -1224,6 +1590,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    checklistGroups,
     checklists,
     checklistItems,
     checklistParents,
@@ -1231,6 +1598,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'checklist_groups',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('checklists', kind: UpdateKind.update)],
+    ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'checklists',
@@ -1269,12 +1643,298 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   ]);
 }
 
+typedef $$ChecklistGroupsTableCreateCompanionBuilder =
+    ChecklistGroupsCompanion Function({
+      Value<int> id,
+      Value<DateTime> createdAt,
+      required String title,
+      Value<bool> isCollapsed,
+    });
+typedef $$ChecklistGroupsTableUpdateCompanionBuilder =
+    ChecklistGroupsCompanion Function({
+      Value<int> id,
+      Value<DateTime> createdAt,
+      Value<String> title,
+      Value<bool> isCollapsed,
+    });
+
+final class $$ChecklistGroupsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $ChecklistGroupsTable, ChecklistGroup> {
+  $$ChecklistGroupsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$ChecklistsTable, List<Checklist>>
+  _checklistsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.checklists,
+    aliasName: 'checklist_groups__id__checklists__group_id',
+  );
+
+  $$ChecklistsTableProcessedTableManager get checklistsRefs {
+    final manager = $$ChecklistsTableTableManager(
+      $_db,
+      $_db.checklists,
+    ).filter((f) => f.groupId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_checklistsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$ChecklistGroupsTableFilterComposer
+    extends Composer<_$AppDatabase, $ChecklistGroupsTable> {
+  $$ChecklistGroupsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCollapsed => $composableBuilder(
+    column: $table.isCollapsed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> checklistsRefs(
+    Expression<bool> Function($$ChecklistsTableFilterComposer f) f,
+  ) {
+    final $$ChecklistsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableFilterComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ChecklistGroupsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChecklistGroupsTable> {
+  $$ChecklistGroupsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCollapsed => $composableBuilder(
+    column: $table.isCollapsed,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ChecklistGroupsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChecklistGroupsTable> {
+  $$ChecklistGroupsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCollapsed => $composableBuilder(
+    column: $table.isCollapsed,
+    builder: (column) => column,
+  );
+
+  Expression<T> checklistsRefs<T extends Object>(
+    Expression<T> Function($$ChecklistsTableAnnotationComposer a) f,
+  ) {
+    final $$ChecklistsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.checklists,
+      getReferencedColumn: (t) => t.groupId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.checklists,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$ChecklistGroupsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChecklistGroupsTable,
+          ChecklistGroup,
+          $$ChecklistGroupsTableFilterComposer,
+          $$ChecklistGroupsTableOrderingComposer,
+          $$ChecklistGroupsTableAnnotationComposer,
+          $$ChecklistGroupsTableCreateCompanionBuilder,
+          $$ChecklistGroupsTableUpdateCompanionBuilder,
+          (ChecklistGroup, $$ChecklistGroupsTableReferences),
+          ChecklistGroup,
+          PrefetchHooks Function({bool checklistsRefs})
+        > {
+  $$ChecklistGroupsTableTableManager(
+    _$AppDatabase db,
+    $ChecklistGroupsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChecklistGroupsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChecklistGroupsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChecklistGroupsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<bool> isCollapsed = const Value.absent(),
+              }) => ChecklistGroupsCompanion(
+                id: id,
+                createdAt: createdAt,
+                title: title,
+                isCollapsed: isCollapsed,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                required String title,
+                Value<bool> isCollapsed = const Value.absent(),
+              }) => ChecklistGroupsCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                title: title,
+                isCollapsed: isCollapsed,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ChecklistGroupsTable, ChecklistGroup>(table),
+                  $$ChecklistGroupsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({checklistsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (checklistsRefs) db.checklists],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (checklistsRefs)
+                    await $_getPrefetchedData<
+                      ChecklistGroup,
+                      $ChecklistGroupsTable,
+                      Checklist
+                    >(
+                      currentTable: table,
+                      referencedTable: $$ChecklistGroupsTableReferences
+                          ._checklistsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$ChecklistGroupsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).checklistsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.groupId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ChecklistGroupsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChecklistGroupsTable,
+      ChecklistGroup,
+      $$ChecklistGroupsTableFilterComposer,
+      $$ChecklistGroupsTableOrderingComposer,
+      $$ChecklistGroupsTableAnnotationComposer,
+      $$ChecklistGroupsTableCreateCompanionBuilder,
+      $$ChecklistGroupsTableUpdateCompanionBuilder,
+      (ChecklistGroup, $$ChecklistGroupsTableReferences),
+      ChecklistGroup,
+      PrefetchHooks Function({bool checklistsRefs})
+    >;
 typedef $$ChecklistsTableCreateCompanionBuilder =
     ChecklistsCompanion Function({
       Value<int> id,
       Value<DateTime> createdAt,
       required String title,
       Value<bool> isFavorite,
+      Value<int?> groupId,
     });
 typedef $$ChecklistsTableUpdateCompanionBuilder =
     ChecklistsCompanion Function({
@@ -1282,11 +1942,30 @@ typedef $$ChecklistsTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<String> title,
       Value<bool> isFavorite,
+      Value<int?> groupId,
     });
 
 final class $$ChecklistsTableReferences
     extends BaseReferences<_$AppDatabase, $ChecklistsTable, Checklist> {
   $$ChecklistsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ChecklistGroupsTable _groupIdTable(_$AppDatabase db) => db
+      .checklistGroups
+      .createAlias('checklists__group_id__checklist_groups__id');
+
+  $$ChecklistGroupsTableProcessedTableManager? get groupId {
+    final $_column = $_itemColumn<int>('group_id');
+    if ($_column == null) return null;
+    final manager = $$ChecklistGroupsTableTableManager(
+      $_db,
+      $_db.checklistGroups,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_groupIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
 
   static MultiTypedResultKey<$ChecklistItemsTable, List<ChecklistItem>>
   _checklistItemsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
@@ -1391,6 +2070,29 @@ class $$ChecklistsTableFilterComposer
     column: $table.isFavorite,
     builder: (column) => ColumnFilters(column),
   );
+
+  $$ChecklistGroupsTableFilterComposer get groupId {
+    final $$ChecklistGroupsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.checklistGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistGroupsTableFilterComposer(
+            $db: $db,
+            $table: $db.checklistGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<bool> checklistItemsRefs(
     Expression<bool> Function($$ChecklistItemsTableFilterComposer f) f,
@@ -1521,6 +2223,29 @@ class $$ChecklistsTableOrderingComposer
     column: $table.isFavorite,
     builder: (column) => ColumnOrderings(column),
   );
+
+  $$ChecklistGroupsTableOrderingComposer get groupId {
+    final $$ChecklistGroupsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.checklistGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistGroupsTableOrderingComposer(
+            $db: $db,
+            $table: $db.checklistGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$ChecklistsTableAnnotationComposer
@@ -1545,6 +2270,29 @@ class $$ChecklistsTableAnnotationComposer
     column: $table.isFavorite,
     builder: (column) => column,
   );
+
+  $$ChecklistGroupsTableAnnotationComposer get groupId {
+    final $$ChecklistGroupsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.groupId,
+      referencedTable: $db.checklistGroups,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChecklistGroupsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.checklistGroups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 
   Expression<T> checklistItemsRefs<T extends Object>(
     Expression<T> Function($$ChecklistItemsTableAnnotationComposer a) f,
@@ -1661,6 +2409,7 @@ class $$ChecklistsTableTableManager
           (Checklist, $$ChecklistsTableReferences),
           Checklist,
           PrefetchHooks Function({
+            bool groupId,
             bool checklistItemsRefs,
             bool parentLinks,
             bool childLinks,
@@ -1684,11 +2433,13 @@ class $$ChecklistsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
+                Value<int?> groupId = const Value.absent(),
               }) => ChecklistsCompanion(
                 id: id,
                 createdAt: createdAt,
                 title: title,
                 isFavorite: isFavorite,
+                groupId: groupId,
               ),
           createCompanionCallback:
               ({
@@ -1696,11 +2447,13 @@ class $$ChecklistsTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 required String title,
                 Value<bool> isFavorite = const Value.absent(),
+                Value<int?> groupId = const Value.absent(),
               }) => ChecklistsCompanion.insert(
                 id: id,
                 createdAt: createdAt,
                 title: title,
                 isFavorite: isFavorite,
+                groupId: groupId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1712,6 +2465,7 @@ class $$ChecklistsTableTableManager
               .toList(),
           prefetchHooksCallback:
               ({
+                groupId = false,
                 checklistItemsRefs = false,
                 parentLinks = false,
                 childLinks = false,
@@ -1725,7 +2479,39 @@ class $$ChecklistsTableTableManager
                     if (childLinks) db.checklistParents,
                     if (checklistChecksRefs) db.checklistChecks,
                   ],
-                  addJoins: null,
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (groupId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.groupId,
+                                    referencedTable: $$ChecklistsTableReferences
+                                        ._groupIdTable(db),
+                                    referencedColumn:
+                                        $$ChecklistsTableReferences
+                                            ._groupIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (checklistItemsRefs)
@@ -1833,6 +2619,7 @@ typedef $$ChecklistsTableProcessedTableManager =
       (Checklist, $$ChecklistsTableReferences),
       Checklist,
       PrefetchHooks Function({
+        bool groupId,
         bool checklistItemsRefs,
         bool parentLinks,
         bool childLinks,
@@ -3010,6 +3797,8 @@ typedef $$ChecklistChecksTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$ChecklistGroupsTableTableManager get checklistGroups =>
+      $$ChecklistGroupsTableTableManager(_db, _db.checklistGroups);
   $$ChecklistsTableTableManager get checklists =>
       $$ChecklistsTableTableManager(_db, _db.checklists);
   $$ChecklistItemsTableTableManager get checklistItems =>

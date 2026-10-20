@@ -10,11 +10,28 @@ mixin CreatedAt on Table {
   late final createdAt = dateTime().withDefault(currentDateAndTime)();
 }
 
+/// A named section of the home screen that checklists can be filed under. It
+/// only organizes the list of checklists; inheritance ignores it.
+class ChecklistGroups extends Table with AutoIncrementingPrimaryKey, CreatedAt {
+  TextColumn get title => text()();
+
+  /// Whether the group's checklists are hidden on the home screen.
+  BoolColumn get isCollapsed => boolean().withDefault(const Constant(false))();
+}
+
 class Checklists extends Table with AutoIncrementingPrimaryKey, CreatedAt {
   TextColumn get title => text()();
 
   /// Favorites are listed before all other checklists.
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+
+  /// The group this checklist is filed under, if any. Deleting the group
+  /// leaves the checklist ungrouped.
+  IntColumn get groupId => integer().nullable().references(
+    ChecklistGroups,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
 }
 
 class ChecklistItems extends Table with AutoIncrementingPrimaryKey, CreatedAt {

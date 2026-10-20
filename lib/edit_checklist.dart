@@ -241,7 +241,7 @@ class _EditChecklistState extends State<EditChecklist> {
       setState(() {
         _inheritedFrom = [
           for (final s in sections)
-            if (s.source.id != widget.checklistId) s.source.title,
+            if (s.source.id != widget.checklistId) s.label,
         ];
         _items.addAll(
           existing.map((item) => _DraftItem(item.title, id: item.id)),

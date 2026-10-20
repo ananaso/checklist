@@ -95,7 +95,7 @@ class _ChecklistViewState extends State<ChecklistView> {
           _HeaderRow(
             section.source.id == widget.checklistId
                 ? 'This list'
-                : 'From ${section.source.title}',
+                : 'From ${section.label}',
           ),
         for (final item in section.items) _ItemRow(item),
       ],
