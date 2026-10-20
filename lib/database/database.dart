@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
@@ -35,8 +36,9 @@ class AppDatabase extends _$AppDatabase {
     return MigrationStrategy(
       beforeOpen: (openingDetails) async {
         await customStatement('PRAGMA foreign_keys = ON');
-        // Reset the DB whenever in debug mode
-        if (kDebugMode) {
+        // Opt-in schema reset for debug runs while iterating on the tables:
+        // flutter run --dart-define=RESET_DB=true
+        if (kDebugMode && const bool.fromEnvironment('RESET_DB')) {
           final m = Migrator(this);
           for (final table in allTables) {
             await m.deleteTable(table.actualTableName);
@@ -392,4 +394,70 @@ class AppDatabase extends _$AppDatabase {
       });
     });
   }
+
+  /// Serializes every checklist, item, inheritance link and check to a JSON
+  /// string that [importBackup] can load back.
+  Future<String> exportBackup() async {
+    final data = {
+      'format': _backupFormat,
+      'version': _backupVersion,
+      'checklists': [
+        for (final r in await select(checklists).get()) r.toJson(),
+      ],
+      'items': [for (final r in await select(checklistItems).get()) r.toJson()],
+      'parents': [
+        for (final r in await select(checklistParents).get()) r.toJson(),
+      ],
+      'checks': [
+        for (final r in await select(checklistChecks).get()) r.toJson(),
+      ],
+    };
+    return jsonEncode(data);
+  }
+
+  /// Replaces all data with the contents of a backup made by [exportBackup].
+  /// Ids are kept, so links and checks stay intact. Throws a
+  /// [FormatException], leaving the data untouched, if [json] isn't a backup
+  /// this version can read.
+  Future<void> importBackup(String json) async {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(json);
+    } on FormatException {
+      throw const FormatException('Not a checklist backup file');
+    }
+    if (decoded is! Map<String, dynamic> ||
+        decoded['format'] != _backupFormat) {
+      throw const FormatException('Not a checklist backup file');
+    }
+    final Map<String, dynamic> data = decoded;
+    final version = data['version'];
+    if (version is! int || version > _backupVersion) {
+      throw FormatException('Unsupported backup version: $version');
+    }
+
+    List<T> rows<T>(String key, T Function(Map<String, dynamic>) parse) => [
+      for (final row in data[key] as List)
+        parse(row as Map<String, dynamic>),
+    ];
+
+    final lists = rows('checklists', Checklist.fromJson);
+    final items = rows('items', ChecklistItem.fromJson);
+    final parents = rows('parents', ChecklistParent.fromJson);
+    final checks = rows('checks', ChecklistCheck.fromJson);
+
+    await transaction(() async {
+      // Cascades to items, links and checks.
+      await delete(checklists).go();
+      await batch((b) {
+        b.insertAll(checklists, lists);
+        b.insertAll(checklistItems, items);
+        b.insertAll(checklistParents, parents);
+        b.insertAll(checklistChecks, checks);
+      });
+    });
+  }
 }
+
+const _backupFormat = 'checklist-backup';
+const _backupVersion = 1;

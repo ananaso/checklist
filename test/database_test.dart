@@ -259,4 +259,39 @@ void main() {
       );
     });
   });
+
+  group('backup', () {
+    test('export then import into a fresh database round-trips', () async {
+      final base = await list('Base', ['x', 'y']);
+      final child = await list('Child', ['c']);
+      await db.setChecklistParents(child.id, [base.id]);
+      final [x, _] = await db.getChecklistItems(base.id);
+      await db.setItemChecked(child.id, x.id, true);
+      final json = await db.exportBackup();
+
+      final other = AppDatabase(NativeDatabase.memory());
+      addTearDown(other.close);
+      await other.createChecklist('Stale');
+      await other.importBackup(json);
+
+      expect(shape(await other.watchChecklistSections(child.id).first), [
+        'Base: x, y',
+        'Child: c',
+      ]);
+      expect(await other.getCheckedItemIds(child.id), {x.id});
+      expect(await other.exportBackup(), json);
+    });
+
+    test('rejects bad files without touching existing data', () async {
+      await list('Keep', ['a']);
+      for (final bad in [
+        'nope',
+        '{}',
+        '{"format":"checklist-backup","version":99}',
+      ]) {
+        await expectLater(db.importBackup(bad), throwsFormatException);
+      }
+      expect((await db.watchChecklists().first).map((c) => c.title), ['Keep']);
+    });
+  });
 }
