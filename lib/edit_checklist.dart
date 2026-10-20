@@ -72,6 +72,11 @@ class _EditableTitleState extends State<_EditableTitle> {
       controller: _controller,
       focusNode: _focusNode,
       onSubmitted: (_) => _commit(),
+      // Wrap long titles instead of scrolling horizontally; the text keyboard
+      // keeps Enter as "done" rather than inserting a newline.
+      maxLines: null,
+      keyboardType: TextInputType.text,
+      textInputAction: TextInputAction.done,
       decoration: const InputDecoration(border: InputBorder.none),
     );
   }
