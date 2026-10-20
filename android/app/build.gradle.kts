@@ -56,6 +56,15 @@ android {
             applicationIdSuffix = ".debug"
             resValue("string", "app_name", "checklist (debug)")
         }
+        // Flutter's profile mode has no resValue of its own, so without this
+        // the manifest's @string/app_name fails to resolve.
+        maybeCreate("profile").apply {
+            initWith(getByName("debug"))
+            // Shares the debug app's ID (and data); both are dev builds.
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "checklist (profile)")
+            matchingFallbacks += listOf("debug")
+        }
         release {
             resValue("string", "app_name", "checklist")
             // Falls back to the debug key when android/key.properties is
