@@ -28,6 +28,10 @@ class ChecklistSection {
   int get hashCode => Object.hash(source, Object.hashAll(items));
 }
 
+/// Which side of a checklist the list created by [AppDatabase.splitChecklist]
+/// goes on.
+enum SplitDirection { parent, child }
+
 @DriftDatabase(
   tables: [Checklists, ChecklistItems, ChecklistParents, ChecklistChecks],
 ) // , include: {'triggers.drift'}
@@ -144,6 +148,77 @@ class AppDatabase extends _$AppDatabase {
       await (delete(checklists)..where((c) => c.id.equals(id))).go();
       // Lists below may have lost items inherited through this one.
       await _pruneChecks(descendants);
+    });
+  }
+
+  /// Moves the items [itemIds] out of checklist [id] into a new list titled
+  /// [title], and returns that list. Moved items keep their ids, so their
+  /// checks survive wherever they are still shown.
+  ///
+  /// With [SplitDirection.parent], [id] inherits from the new list, so it and
+  /// every list below it still show all their items. With
+  /// [SplitDirection.child], the new list inherits from [id] and takes over the
+  /// moved items; lists that inherited from [id] inherit from the new list
+  /// instead, so they look the same as before. [id] itself loses the moved
+  /// items.
+  Future<Checklist> splitChecklist(
+    int id,
+    Set<int> itemIds, {
+    required String title,
+    required SplitDirection direction,
+  }) {
+    return transaction(() async {
+      final items = await getChecklistItems(id);
+      final moved = [
+        for (final item in items)
+          if (itemIds.contains(item.id)) item,
+      ];
+      final kept = [
+        for (final item in items)
+          if (!itemIds.contains(item.id)) item,
+      ];
+      // Fetched before the new list links in, so it isn't among them.
+      final children = await getChildren(id);
+      final created = await createChecklist(title);
+
+      Future<void> place(ChecklistItem item, int listId, int position) {
+        return (update(checklistItems)..where((ci) => ci.id.equals(item.id)))
+            .write(
+              ChecklistItemsCompanion(
+                checklistId: Value(listId),
+                position: Value(position),
+              ),
+            );
+      }
+
+      for (final (i, item) in moved.indexed) {
+        await place(item, created.id, i);
+      }
+      for (final (i, item) in kept.indexed) {
+        await place(item, id, i);
+      }
+
+      switch (direction) {
+        case SplitDirection.parent:
+          await setChecklistParents(id, [
+            ...await getChecklistParentIds(id),
+            created.id,
+          ]);
+        case SplitDirection.child:
+          await setChecklistParents(created.id, [id]);
+          for (final child in children) {
+            // The new list inherits from [id], so linking to it alone shows
+            // the same items.
+            final parentIds = await getChecklistParentIds(child.id);
+            await setChecklistParents(child.id, [
+              for (final parentId in parentIds)
+                parentId == id ? created.id : parentId,
+            ]);
+          }
+          // The list no longer shows the moved items.
+          await _pruneChecks([id]);
+      }
+      return created;
     });
   }
 

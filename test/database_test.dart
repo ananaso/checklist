@@ -260,6 +260,68 @@ void main() {
     });
   });
 
+  group('split', () {
+    Future<Set<int>> ids(Checklist checklist, List<String> titles) async => {
+      for (final item in await db.getChecklistItems(checklist.id))
+        if (titles.contains(item.title)) item.id,
+    };
+
+    test('into a parent keeps what the list shows and its checks', () async {
+      final l = await list('L', ['a', 'b', 'c', 'd']);
+      final [_, b, ..._] = await db.getChecklistItems(l.id);
+      await db.setItemChecked(l.id, b.id, true);
+
+      final p = await db.splitChecklist(
+        l.id,
+        await ids(l, ['b', 'd']),
+        title: 'P',
+        direction: SplitDirection.parent,
+      );
+
+      expect(await view(l), ['P: b, d', 'L: a, c']);
+      expect(await db.getChecklistParentIds(l.id), [p.id]);
+      expect(await db.getCheckedItemIds(l.id), {b.id});
+    });
+
+    test('into a child moves the items and prunes the list\'s checks', () async {
+      final l = await list('L', ['a', 'b', 'c']);
+      final [a, b, _] = await db.getChecklistItems(l.id);
+      await db.setItemChecked(l.id, a.id, true);
+      await db.setItemChecked(l.id, b.id, true);
+
+      final c = await db.splitChecklist(
+        l.id,
+        await ids(l, ['b']),
+        title: 'C',
+        direction: SplitDirection.child,
+      );
+
+      expect(await view(l), ['L: a, c']);
+      expect(await view(c), ['L: a, c', 'C: b']);
+      expect(await db.getCheckedItemIds(l.id), {a.id});
+      expect(await db.getCheckedItemIds(c.id), isEmpty);
+    });
+
+    test('into a child re-points existing children to it', () async {
+      final l = await list('L', ['a', 'b']);
+      final x = await list('X', ['x']);
+      await db.setChecklistParents(x.id, [l.id]);
+      final [_, b] = await db.getChecklistItems(l.id);
+      await db.setItemChecked(x.id, b.id, true);
+
+      final c = await db.splitChecklist(
+        l.id,
+        {b.id},
+        title: 'C',
+        direction: SplitDirection.child,
+      );
+
+      expect(await db.getChecklistParentIds(x.id), [c.id]);
+      expect(await view(x), ['L: a', 'C: b', 'X: x']);
+      expect(await db.getCheckedItemIds(x.id), {b.id});
+    });
+  });
+
   group('backup', () {
     test('export then import into a fresh database round-trips', () async {
       final base = await list('Base', ['x', 'y']);

@@ -79,6 +79,20 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
     return editChecklistParents(context, database, widget.checklist);
   }
 
+  Future<void> _split() async {
+    final database = Provider.of<AppDatabase>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final title = await splitChecklistWithDialog(
+      context,
+      database,
+      widget.checklist,
+    );
+    if (title == null) return;
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text('Created "$title"')));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +117,11 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
             icon: const Icon(Icons.account_tree),
             tooltip: 'Inherits from',
             onPressed: _editParents,
+          ),
+          IconButton(
+            icon: const Icon(Icons.call_split),
+            tooltip: 'Split list',
+            onPressed: _split,
           ),
           IconButton(
             icon: const Icon(Icons.edit),

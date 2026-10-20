@@ -162,6 +162,173 @@ class _ParentPickerDialogState extends State<_ParentPickerDialog> {
   }
 }
 
+typedef _SplitChoice = ({
+  SplitDirection direction,
+  String title,
+  Set<int> itemIds,
+});
+
+/// Lets the user move some of [checklist]'s own items into a new parent or
+/// child list, and does so. Resolves to the new list's title, or null if
+/// nothing was split.
+Future<String?> splitChecklistWithDialog(
+  BuildContext context,
+  AppDatabase database,
+  Checklist checklist,
+) async {
+  final items = await database.getChecklistItems(checklist.id);
+  if (!context.mounted) return null;
+
+  if (items.isEmpty) {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Split list'),
+        content: const Text('This list has no items of its own to split.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+    return null;
+  }
+
+  final choice = await showDialog<_SplitChoice>(
+    context: context,
+    builder: (context) => _SplitDialog(items: items),
+  );
+  if (choice == null) return null;
+  await database.splitChecklist(
+    checklist.id,
+    choice.itemIds,
+    title: choice.title,
+    direction: choice.direction,
+  );
+  return choice.title;
+}
+
+/// Picks items, a direction and a name for a split; pops with a
+/// [_SplitChoice], or null if cancelled.
+class _SplitDialog extends StatefulWidget {
+  const _SplitDialog({required this.items});
+
+  final List<ChecklistItem> items;
+
+  @override
+  State<_SplitDialog> createState() => _SplitDialogState();
+}
+
+class _SplitDialogState extends State<_SplitDialog> {
+  final TextEditingController _controller = TextEditingController();
+  final Set<int> _chosen = {};
+  SplitDirection _direction = SplitDirection.parent;
+  String? _error;
+
+  void _submit() {
+    final title = _controller.text.trim();
+    if (title.isEmpty) {
+      setState(() => _error = 'Name can\'t be empty');
+      return;
+    }
+    Navigator.of(
+      context,
+    ).pop((direction: _direction, title: title, itemIds: _chosen));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Split list'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SegmentedButton<SplitDirection>(
+              segments: const [
+                ButtonSegment(
+                  value: SplitDirection.parent,
+                  label: Text('New parent'),
+                ),
+                ButtonSegment(
+                  value: SplitDirection.child,
+                  label: Text('New child'),
+                ),
+              ],
+              selected: {_direction},
+              onSelectionChanged: (selection) =>
+                  setState(() => _direction = selection.single),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                _direction == SplitDirection.parent
+                    ? 'The chosen items move to a new list that this one '
+                          'inherits from.'
+                    : 'The chosen items move to a new list that inherits '
+                          'from this one.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
+              decoration: InputDecoration(
+                labelText: 'New list name',
+                errorText: _error,
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final item in widget.items)
+                    CheckboxListTile(
+                      title: Text(item.title),
+                      value: _chosen.contains(item.id),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (value) => setState(() {
+                        if (value!) {
+                          _chosen.add(item.id);
+                        } else {
+                          _chosen.remove(item.id);
+                        }
+                      }),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _chosen.isEmpty ? null : _submit,
+          child: const Text('Split'),
+        ),
+      ],
+    );
+  }
+}
+
 /// Asks for a name; pops with the trimmed title, or null if cancelled.
 class ChecklistNameDialog extends StatefulWidget {
   const ChecklistNameDialog({
