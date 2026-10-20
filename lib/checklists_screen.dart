@@ -94,13 +94,18 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
     );
   }
 
-  Widget _checklistTile(Checklist checklist, {bool indented = false}) {
+  Widget _checklistTile(
+    Checklist checklist, {
+    bool indented = false,
+    String? groupTitle,
+  }) {
     return ListTile(
       contentPadding: indented
           ? const EdgeInsetsDirectional.only(start: 32, end: 16)
           : null,
       leading: checklist.isFavorite ? const Icon(Icons.star) : null,
       title: Text(checklist.title),
+      subtitle: groupTitle == null ? null : Text(groupTitle),
       trailing: PopupMenuButton<void>(
         tooltip: 'More',
         itemBuilder: (context) => [
@@ -278,9 +283,11 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
               }
               // Favorites lead, from any group; then each group's other lists
               // under its header, then the ungrouped ones.
+              final groupTitles = {for (final g in groups) g.id: g.title};
               final rows = <Widget>[
                 for (final c in checklists)
-                  if (c.isFavorite) _checklistTile(c),
+                  if (c.isFavorite)
+                    _checklistTile(c, groupTitle: groupTitles[c.groupId]),
                 for (final group in groups) ...[
                   _groupHeader(
                     group,
