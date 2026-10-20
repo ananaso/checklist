@@ -19,6 +19,17 @@ void main() {
   );
 }
 
+class NoStretchScrollBehavior extends MaterialScrollBehavior {
+  const NoStretchScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -29,6 +40,7 @@ class MyApp extends StatelessWidget {
       builder: (lightDynamic, darkDynamic) {
         return MaterialApp(
           title: 'Checklist',
+          scrollBehavior: const NoStretchScrollBehavior(),
           theme: ThemeData(
             colorScheme:
                 lightDynamic ??
