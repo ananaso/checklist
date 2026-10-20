@@ -17,6 +17,15 @@ class ChecklistSection {
 
   final Checklist source;
   final List<ChecklistItem> items;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ChecklistSection &&
+      other.source == source &&
+      listEquals(other.items, items);
+
+  @override
+  int get hashCode => Object.hash(source, Object.hashAll(items));
 }
 
 @DriftDatabase(
@@ -437,8 +446,7 @@ class AppDatabase extends _$AppDatabase {
     }
 
     List<T> rows<T>(String key, T Function(Map<String, dynamic>) parse) => [
-      for (final row in data[key] as List)
-        parse(row as Map<String, dynamic>),
+      for (final row in data[key] as List) parse(row as Map<String, dynamic>),
     ];
 
     final lists = rows('checklists', Checklist.fromJson);

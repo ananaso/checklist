@@ -18,8 +18,10 @@ class _DraftItem {
   _DraftItem withTitle(String title) => _DraftItem(title, id: id, key: key);
 }
 
-/// An item title that edits in place. Reports changes on submit or when the
-/// field loses focus, so a typing session becomes one undo step.
+/// An item title that edits in place. It shows plain text until tapped, since
+/// a live text field per row is costly to lay out in a long list. Reports
+/// changes on submit or when the field loses focus, so a typing session
+/// becomes one undo step.
 class _EditableTitle extends StatefulWidget {
   const _EditableTitle({required this.title, required this.onChanged});
 
@@ -36,8 +38,21 @@ class _EditableTitleState extends State<_EditableTitle> {
   );
   late final FocusNode _focusNode = FocusNode()..addListener(_onFocusChange);
 
+  bool _editing = false;
+
+  void _startEditing() {
+    setState(() => _editing = true);
+    // autofocus is ignored while something else (the New Item field, another
+    // row) holds focus, so ask for it once the field exists.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
   void _onFocusChange() {
-    if (!_focusNode.hasFocus) _commit();
+    if (_focusNode.hasFocus || !_editing) return;
+    _commit();
+    if (mounted) setState(() => _editing = false);
   }
 
   void _commit() {
@@ -68,6 +83,21 @@ class _EditableTitleState extends State<_EditableTitle> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_editing) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _startEditing,
+        // The same decorator the text field uses, so tapping doesn't shift
+        // the row.
+        child: InputDecorator(
+          decoration: _titleDecoration,
+          child: Text(
+            widget.title,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+      );
+    }
     return TextField(
       controller: _controller,
       focusNode: _focusNode,
@@ -77,10 +107,12 @@ class _EditableTitleState extends State<_EditableTitle> {
       maxLines: null,
       keyboardType: TextInputType.text,
       textInputAction: TextInputAction.done,
-      decoration: const InputDecoration(border: InputBorder.none),
+      decoration: _titleDecoration,
     );
   }
 }
+
+const _titleDecoration = InputDecoration(border: InputBorder.none);
 
 /// The space between two items. Faint at rest, with a touch target taller than
 /// what's drawn; tapping it asks to insert an item here.
@@ -198,18 +230,19 @@ class _EditChecklistState extends State<EditChecklist> {
   void initState() {
     super.initState();
     final database = Provider.of<AppDatabase>(context, listen: false);
-    database.watchChecklistSections(widget.checklistId).first.then((sections) {
+    // Load both together so the screen rebuilds once, not once per query.
+    Future.wait([
+      database.watchChecklistSections(widget.checklistId).first,
+      database.getChecklistItems(widget.checklistId),
+    ]).then((results) {
       if (!mounted) return;
+      final sections = results[0] as List<ChecklistSection>;
+      final existing = results[1] as List<ChecklistItem>;
       setState(() {
         _inheritedFrom = [
           for (final s in sections)
             if (s.source.id != widget.checklistId) s.source.title,
         ];
-      });
-    });
-    database.getChecklistItems(widget.checklistId).then((existing) {
-      if (!mounted) return;
-      setState(() {
         _items.addAll(
           existing.map((item) => _DraftItem(item.title, id: item.id)),
         );
