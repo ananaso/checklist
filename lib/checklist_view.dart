@@ -12,9 +12,14 @@ class ChecklistView extends StatefulWidget {
 }
 
 class _ChecklistViewState extends State<ChecklistView> {
+  /// Last scroll offset per checklist, so reopening a list resumes where it
+  /// was left. Kept in memory only; it resets when the app restarts.
+  static final Map<int, double> _offsets = {};
+
   late final AppDatabase _database;
   late final Stream<List<ChecklistSection>> _sections;
   late final Stream<Set<int>> _checked;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
@@ -22,6 +27,19 @@ class _ChecklistViewState extends State<ChecklistView> {
     _database = Provider.of<AppDatabase>(context, listen: false);
     _sections = _database.watchChecklistSections(widget.checklistId);
     _checked = _database.watchCheckedItemIds(widget.checklistId);
+    _scrollController = ScrollController(
+      initialScrollOffset: _offsets[widget.checklistId] ?? 0,
+    )..addListener(_rememberOffset);
+  }
+
+  void _rememberOffset() {
+    _offsets[widget.checklistId] = _scrollController.offset;
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -43,6 +61,7 @@ class _ChecklistViewState extends State<ChecklistView> {
           builder: (context, checkedSnapshot) {
             final checked = checkedSnapshot.data ?? const <int>{};
             return ListView(
+              controller: _scrollController,
               children: [
                 for (final section in sections) ...[
                   if (showHeaders)
