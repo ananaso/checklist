@@ -136,6 +136,24 @@ void main() {
       expect(await db.getCheckedItemIds(base.id), isEmpty);
     });
 
+    test('survive reordering the parents', () async {
+      final a = await list('A', ['a']);
+      final b = await list('B', ['b']);
+      final child = await list('Child', ['c']);
+      await db.setChecklistParents(child.id, [a.id, b.id]);
+      final checked = {
+        (await items(a)).single.id,
+        (await items(b)).single.id,
+        (await items(child)).single.id,
+      };
+      await db.setCheckedItemIds(child.id, checked);
+
+      await db.setChecklistParents(child.id, [b.id, a.id]);
+
+      expect(await view(child), ['B: b', 'A: a', 'Child: c']);
+      expect(await db.getCheckedItemIds(child.id), checked);
+    });
+
     test('can be unchecked and reset for one list only', () async {
       final a = await list('A', ['x', 'y']);
       final b = await list('B', ['z']);

@@ -103,46 +103,45 @@ Future<void> editChecklistParents(
     for (final c in eligible)
       if (groupId == null || c.groupId != groupId) c,
   ];
-  final groupTitle = groupId == null
-      ? null
-      : (await database.watchGroups().first)
-            .where((g) => g.id == groupId)
-            .firstOrNull
-            ?.title;
+  final groupTitles = {
+    for (final g in await database.watchGroups().first) g.id: g.title,
+  };
+  final groupTitle = groupId == null ? null : groupTitles[groupId];
   if (!context.mounted) return;
-  final chosen = await showDialog<Set<int>>(
+  final chosen = await showDialog<List<int>>(
     context: context,
     builder: (context) => _ParentPickerDialog(
       candidates: candidates,
-      initial: current.toSet(),
+      initial: current,
       groupTitle: groupTitle,
+      groupTitles: groupTitles,
       sameGroupCount: sameGroup.length,
     ),
   );
   if (chosen == null) return;
-  // Keep the existing parents' order; new ones go after them.
-  await database.setChecklistParents(checklist.id, [
-    for (final id in current)
-      if (chosen.contains(id)) id,
-    for (final c in candidates)
-      if (chosen.contains(c.id) && !current.contains(c.id)) c.id,
-  ]);
+  await database.setChecklistParents(checklist.id, chosen);
 }
 
-/// Multi-select of lists to inherit from; pops with the chosen ids, or null if
-/// cancelled. The first [sameGroupCount] candidates are in the group titled
+/// Multi-select of lists to inherit from, with the chosen ones shown first
+/// and draggable into order; pops with the chosen ids in that order, or null
+/// if cancelled. The first [sameGroupCount] candidates are in the group titled
 /// [groupTitle]; when the rest are shown too, the two parts get headings.
 class _ParentPickerDialog extends StatefulWidget {
   const _ParentPickerDialog({
     required this.candidates,
     required this.initial,
     this.groupTitle,
+    this.groupTitles = const {},
     this.sameGroupCount = 0,
   });
 
   final List<Checklist> candidates;
-  final Set<int> initial;
+  final List<int> initial;
   final String? groupTitle;
+
+  /// Group titles by group id, shown under each list so same-named lists in
+  /// different groups can be told apart.
+  final Map<int, String> groupTitles;
   final int sameGroupCount;
 
   @override
@@ -150,19 +149,43 @@ class _ParentPickerDialog extends StatefulWidget {
 }
 
 class _ParentPickerDialogState extends State<_ParentPickerDialog> {
-  late final Set<int> _chosen = {...widget.initial};
+  /// The chosen parents' ids, in the order they'll be saved.
+  late final List<int> _order = [...widget.initial];
+
+  late final Map<int, Checklist> _byId = {
+    for (final c in widget.candidates) c.id: c,
+  };
 
   Widget _heading(String text) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
     child: Text(text, style: Theme.of(context).textTheme.labelLarge),
   );
 
+  Widget? _groupLabel(Checklist c) {
+    final title = c.groupId == null ? null : widget.groupTitles[c.groupId];
+    return title == null ? null : Text(title);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // The chosen lists are listed on their own above, so the group split only
+    // concerns the ones still to pick.
+    final chosen = [
+      for (final id in _order)
+        if (_byId[id] != null) _byId[id]!,
+    ];
+    final unchosen = [
+      for (final c in widget.candidates)
+        if (!_order.contains(c.id)) c,
+    ];
+    final unchosenInGroup = widget.candidates
+        .take(widget.sameGroupCount)
+        .where((c) => !_order.contains(c.id))
+        .length;
     final split =
         widget.groupTitle != null &&
-        widget.sameGroupCount > 0 &&
-        widget.sameGroupCount < widget.candidates.length;
+        unchosenInGroup > 0 &&
+        unchosenInGroup < unchosen.length;
     return AlertDialog(
       title: const Text('Inherit items from'),
       content: widget.candidates.isEmpty
@@ -172,21 +195,43 @@ class _ParentPickerDialogState extends State<_ParentPickerDialog> {
               child: ListView(
                 shrinkWrap: true,
                 children: [
-                  for (final (i, c) in widget.candidates.indexed) ...[
+                  if (chosen.isNotEmpty) ...[
+                    _heading('Inheriting from, in order'),
+                    ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      buildDefaultDragHandles: false,
+                      itemCount: chosen.length,
+                      onReorderItem: (oldIndex, newIndex) => setState(
+                        () =>
+                            _order.insert(newIndex, _order.removeAt(oldIndex)),
+                      ),
+                      itemBuilder: (context, index) => ListTile(
+                        key: ValueKey(chosen[index].id),
+                        leading: ReorderableDragStartListener(
+                          index: index,
+                          child: const Icon(Icons.drag_handle),
+                        ),
+                        title: Text(chosen[index].title),
+                        subtitle: _groupLabel(chosen[index]),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.remove_circle_outline),
+                          tooltip: 'Stop inheriting',
+                          onPressed: () =>
+                              setState(() => _order.remove(chosen[index].id)),
+                        ),
+                      ),
+                    ),
+                  ],
+                  for (final (i, c) in unchosen.indexed) ...[
                     if (split && i == 0) _heading('In ${widget.groupTitle}'),
-                    if (split && i == widget.sameGroupCount)
-                      _heading('Other lists'),
+                    if (split && i == unchosenInGroup) _heading('Other lists'),
                     CheckboxListTile(
                       title: Text(c.title),
-                      value: _chosen.contains(c.id),
+                      subtitle: _groupLabel(c),
+                      value: false,
                       controlAffinity: ListTileControlAffinity.leading,
-                      onChanged: (value) => setState(() {
-                        if (value!) {
-                          _chosen.add(c.id);
-                        } else {
-                          _chosen.remove(c.id);
-                        }
-                      }),
+                      onChanged: (_) => setState(() => _order.add(c.id)),
                     ),
                   ],
                 ],
@@ -198,7 +243,7 @@ class _ParentPickerDialogState extends State<_ParentPickerDialog> {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: () => Navigator.of(context).pop(_chosen),
+          onPressed: () => Navigator.of(context).pop(_order),
           child: const Text('Save'),
         ),
       ],
