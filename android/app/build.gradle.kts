@@ -45,8 +45,19 @@ android {
         }
     }
 
+    buildFeatures {
+        resValues = true
+    }
+
     buildTypes {
+        debug {
+            // Separate ID so debug builds install alongside the release app
+            // instead of replacing it (and wiping its data).
+            applicationIdSuffix = ".debug"
+            resValue("string", "app_name", "checklist (debug)")
+        }
         release {
+            resValue("string", "app_name", "checklist")
             // Falls back to the debug key when android/key.properties is
             // missing, so release builds still work on a fresh checkout.
             signingConfig = signingConfigs.findByName("release")
