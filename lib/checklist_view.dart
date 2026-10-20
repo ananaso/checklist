@@ -120,6 +120,15 @@ class _ChecklistViewState extends State<ChecklistView> {
     }
     return ListView.builder(
       controller: _scrollController,
+      // Padding inside the list scrolls with it, so items are visible right up
+      // to the app bar and the screen's bottom edge. The bottom inset keeps
+      // the last item clear of the system navigation bar.
+      padding: EdgeInsets.fromLTRB(
+        32,
+        8,
+        32,
+        8 + MediaQuery.paddingOf(context).bottom,
+      ),
       itemCount: _rows.length,
       itemBuilder: (context, index) {
         switch (_rows[index]) {

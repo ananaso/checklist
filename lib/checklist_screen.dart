@@ -121,10 +121,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(32),
-        child: ChecklistView(checklistId: widget.checklist.id),
-      ),
+      body: ChecklistView(checklistId: widget.checklist.id),
     );
   }
 }
