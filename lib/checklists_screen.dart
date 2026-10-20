@@ -159,10 +159,25 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
             itemBuilder: (context, index) {
               final checklist = checklists[index];
               return ListTile(
+                leading: checklist.isFavorite
+                    ? const Icon(Icons.star)
+                    : null,
                 title: Text(checklist.title),
                 trailing: PopupMenuButton<void>(
                   tooltip: 'More',
                   itemBuilder: (context) => [
+                    PopupMenuItem(
+                      onTap: () => Provider.of<AppDatabase>(
+                        context,
+                        listen: false,
+                      ).setChecklistFavorite(
+                        checklist.id,
+                        !checklist.isFavorite,
+                      ),
+                      child: Text(
+                        checklist.isFavorite ? 'Unfavorite' : 'Favorite',
+                      ),
+                    ),
                     PopupMenuItem(
                       onTap: () => _rename(checklist),
                       child: const Text('Rename'),

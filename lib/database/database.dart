@@ -38,11 +38,16 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
+      onUpgrade: (m, from, to) async {
+        if (from < 2) {
+          await m.addColumn(checklists, checklists.isFavorite);
+        }
+      },
       beforeOpen: (openingDetails) async {
         await customStatement('PRAGMA foreign_keys = ON');
         // Opt-in schema reset for debug runs while iterating on the tables:
@@ -80,6 +85,12 @@ class AppDatabase extends _$AppDatabase {
   Future<void> renameChecklist(int id, String title) {
     return (update(checklists)..where((c) => c.id.equals(id))).write(
       ChecklistsCompanion(title: Value(title)),
+    );
+  }
+
+  Future<void> setChecklistFavorite(int id, bool isFavorite) {
+    return (update(checklists)..where((c) => c.id.equals(id))).write(
+      ChecklistsCompanion(isFavorite: Value(isFavorite)),
     );
   }
 
@@ -276,10 +287,11 @@ class AppDatabase extends _$AppDatabase {
     return sections;
   }
 
-  /// Streams all checklists, sorted alphabetically by title (ignoring case),
-  /// re-emitting on changes.
+  /// Streams all checklists, favorites first, each group sorted alphabetically
+  /// by title (ignoring case), re-emitting on changes.
   Stream<List<Checklist>> watchChecklists() {
     return (select(checklists)..orderBy([
+          (c) => OrderingTerm.desc(c.isFavorite),
           (c) => OrderingTerm.asc(c.title.collate(Collate.noCase)),
           (c) => OrderingTerm.asc(c.id),
         ]))
@@ -449,7 +461,11 @@ class AppDatabase extends _$AppDatabase {
       for (final row in data[key] as List) parse(row as Map<String, dynamic>),
     ];
 
-    final lists = rows('checklists', Checklist.fromJson);
+    // Backups made before favorites existed have no such field.
+    final lists = rows(
+      'checklists',
+      (row) => Checklist.fromJson({'isFavorite': false, ...row}),
+    );
     final items = rows('items', ChecklistItem.fromJson);
     final parents = rows('parents', ChecklistParent.fromJson);
     final checks = rows('checks', ChecklistCheck.fromJson);

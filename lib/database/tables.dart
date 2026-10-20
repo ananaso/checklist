@@ -12,6 +12,9 @@ mixin CreatedAt on Table {
 
 class Checklists extends Table with AutoIncrementingPrimaryKey, CreatedAt {
   TextColumn get title => text()();
+
+  /// Favorites are listed before all other checklists.
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
 }
 
 class ChecklistItems extends Table with AutoIncrementingPrimaryKey, CreatedAt {

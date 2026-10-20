@@ -43,8 +43,23 @@ class $ChecklistsTable extends Checklists
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, createdAt, title];
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, createdAt, title, isFavorite];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -74,6 +89,12 @@ class $ChecklistsTable extends Checklists
     } else if (isInserting) {
       context.missing(_titleMeta);
     }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
     return context;
   }
 
@@ -95,6 +116,10 @@ class $ChecklistsTable extends Checklists
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
     );
   }
 
@@ -108,10 +133,14 @@ class Checklist extends DataClass implements Insertable<Checklist> {
   final int id;
   final DateTime createdAt;
   final String title;
+
+  /// Favorites are listed before all other checklists.
+  final bool isFavorite;
   const Checklist({
     required this.id,
     required this.createdAt,
     required this.title,
+    required this.isFavorite,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -119,6 +148,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     map['id'] = Variable<int>(id);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['title'] = Variable<String>(title);
+    map['is_favorite'] = Variable<bool>(isFavorite);
     return map;
   }
 
@@ -127,6 +157,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       id: Value(id),
       createdAt: Value(createdAt),
       title: Value(title),
+      isFavorite: Value(isFavorite),
     );
   }
 
@@ -139,6 +170,7 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       id: serializer.fromJson<int>(json['id']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       title: serializer.fromJson<String>(json['title']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
     );
   }
   @override
@@ -148,20 +180,29 @@ class Checklist extends DataClass implements Insertable<Checklist> {
       'id': serializer.toJson<int>(id),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'title': serializer.toJson<String>(title),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
     };
   }
 
-  Checklist copyWith({int? id, DateTime? createdAt, String? title}) =>
-      Checklist(
-        id: id ?? this.id,
-        createdAt: createdAt ?? this.createdAt,
-        title: title ?? this.title,
-      );
+  Checklist copyWith({
+    int? id,
+    DateTime? createdAt,
+    String? title,
+    bool? isFavorite,
+  }) => Checklist(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    title: title ?? this.title,
+    isFavorite: isFavorite ?? this.isFavorite,
+  );
   Checklist copyWithCompanion(ChecklistsCompanion data) {
     return Checklist(
       id: data.id.present ? data.id.value : this.id,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       title: data.title.present ? data.title.value : this.title,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
     );
   }
 
@@ -170,45 +211,52 @@ class Checklist extends DataClass implements Insertable<Checklist> {
     return (StringBuffer('Checklist(')
           ..write('id: $id, ')
           ..write('createdAt: $createdAt, ')
-          ..write('title: $title')
+          ..write('title: $title, ')
+          ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, createdAt, title);
+  int get hashCode => Object.hash(id, createdAt, title, isFavorite);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Checklist &&
           other.id == this.id &&
           other.createdAt == this.createdAt &&
-          other.title == this.title);
+          other.title == this.title &&
+          other.isFavorite == this.isFavorite);
 }
 
 class ChecklistsCompanion extends UpdateCompanion<Checklist> {
   final Value<int> id;
   final Value<DateTime> createdAt;
   final Value<String> title;
+  final Value<bool> isFavorite;
   const ChecklistsCompanion({
     this.id = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.title = const Value.absent(),
+    this.isFavorite = const Value.absent(),
   });
   ChecklistsCompanion.insert({
     this.id = const Value.absent(),
     this.createdAt = const Value.absent(),
     required String title,
+    this.isFavorite = const Value.absent(),
   }) : title = Value(title);
   static Insertable<Checklist> custom({
     Expression<int>? id,
     Expression<DateTime>? createdAt,
     Expression<String>? title,
+    Expression<bool>? isFavorite,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (createdAt != null) 'created_at': createdAt,
       if (title != null) 'title': title,
+      if (isFavorite != null) 'is_favorite': isFavorite,
     });
   }
 
@@ -216,11 +264,13 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     Value<int>? id,
     Value<DateTime>? createdAt,
     Value<String>? title,
+    Value<bool>? isFavorite,
   }) {
     return ChecklistsCompanion(
       id: id ?? this.id,
       createdAt: createdAt ?? this.createdAt,
       title: title ?? this.title,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -236,6 +286,9 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
     return map;
   }
 
@@ -244,7 +297,8 @@ class ChecklistsCompanion extends UpdateCompanion<Checklist> {
     return (StringBuffer('ChecklistsCompanion(')
           ..write('id: $id, ')
           ..write('createdAt: $createdAt, ')
-          ..write('title: $title')
+          ..write('title: $title, ')
+          ..write('isFavorite: $isFavorite')
           ..write(')'))
         .toString();
   }
@@ -1220,12 +1274,14 @@ typedef $$ChecklistsTableCreateCompanionBuilder =
       Value<int> id,
       Value<DateTime> createdAt,
       required String title,
+      Value<bool> isFavorite,
     });
 typedef $$ChecklistsTableUpdateCompanionBuilder =
     ChecklistsCompanion Function({
       Value<int> id,
       Value<DateTime> createdAt,
       Value<String> title,
+      Value<bool> isFavorite,
     });
 
 final class $$ChecklistsTableReferences
@@ -1328,6 +1384,11 @@ class $$ChecklistsTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1455,6 +1516,11 @@ class $$ChecklistsTableOrderingComposer
     column: $table.title,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ChecklistsTableAnnotationComposer
@@ -1474,6 +1540,11 @@ class $$ChecklistsTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
 
   Expression<T> checklistItemsRefs<T extends Object>(
     Expression<T> Function($$ChecklistItemsTableAnnotationComposer a) f,
@@ -1612,20 +1683,24 @@ class $$ChecklistsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
               }) => ChecklistsCompanion(
                 id: id,
                 createdAt: createdAt,
                 title: title,
+                isFavorite: isFavorite,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 required String title,
+                Value<bool> isFavorite = const Value.absent(),
               }) => ChecklistsCompanion.insert(
                 id: id,
                 createdAt: createdAt,
                 title: title,
+                isFavorite: isFavorite,
               ),
           withReferenceMapper: (p0) => p0
               .map(
