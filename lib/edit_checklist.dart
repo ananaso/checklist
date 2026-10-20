@@ -82,6 +82,84 @@ class _EditableTitleState extends State<_EditableTitle> {
   }
 }
 
+/// The space between two items. Faint at rest, with a touch target taller than
+/// what's drawn; tapping it asks to insert an item here.
+class _InsertGap extends StatelessWidget {
+  const _InsertGap({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.3);
+    return Semantics(
+      button: true,
+      label: 'Insert item here',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          height: 28,
+          child: Row(
+            children: [
+              Expanded(child: Divider(color: color, height: 1)),
+              Icon(Icons.add, size: 16, color: color),
+              Expanded(child: Divider(color: color, height: 1)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A text field for typing a new item into the middle of the list. Submitting
+/// reports the text; losing focus while empty reports a cancel.
+class _InsertField extends StatefulWidget {
+  const _InsertField({
+    super.key,
+    required this.onSubmitted,
+    required this.onCancel,
+  });
+
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onCancel;
+
+  @override
+  State<_InsertField> createState() => _InsertFieldState();
+}
+
+class _InsertFieldState extends State<_InsertField> {
+  final TextEditingController _controller = TextEditingController();
+  late final FocusNode _focusNode = FocusNode()..addListener(_onFocusChange);
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus && _controller.text.trim().isEmpty) {
+      widget.onCancel();
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      autofocus: true,
+      onSubmitted: widget.onSubmitted,
+      decoration: const InputDecoration(labelText: 'New Item'),
+    );
+  }
+}
+
 class EditChecklist extends StatefulWidget {
   const EditChecklist({super.key, required this.checklistId});
 
@@ -106,6 +184,11 @@ class _EditChecklistState extends State<EditChecklist> {
 
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
+  /// The gap an item is being typed into, where [i] means just before item [i],
+  /// or null when none is open.
+  int? _insertAt;
 
   /// Names of the lists this one inherits items from. Their items aren't
   /// editable here, so say why they're missing from the draft.
@@ -149,6 +232,8 @@ class _EditChecklistState extends State<EditChecklist> {
 
   void _undo() {
     setState(() {
+      // The open insert point is an index, which no longer means the same gap.
+      _insertAt = null;
       _redoStack.add(List.of(_items));
       _items
         ..clear()
@@ -158,6 +243,7 @@ class _EditChecklistState extends State<EditChecklist> {
 
   void _redo() {
     setState(() {
+      _insertAt = null;
       _undoStack.add(List.of(_items));
       _items
         ..clear()
@@ -169,10 +255,47 @@ class _EditChecklistState extends State<EditChecklist> {
     final title = text.trim();
     if (title.isNotEmpty) {
       _edit(() => _items.add(_DraftItem(title)));
+      _scrollToEnd();
     }
     _controller.clear();
     // Keep the keyboard open so several items can be entered in a row.
     _focusNode.requestFocus();
+  }
+
+  /// Brings the end of the list into view once the new item has been laid out.
+  void _scrollToEnd() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  /// Inserts the text typed at gap [index], then moves the insert field to the
+  /// gap after the new item so a run of items can be typed in place.
+  void _insertItem(int index, String text) {
+    final title = text.trim();
+    if (title.isEmpty) {
+      _cancelInsert(index);
+      return;
+    }
+    _edit(() => _items.insert(index, _DraftItem(title)));
+    if (index + 1 >= _items.length) {
+      // That was the end of the list, which the New Item field already covers.
+      setState(() => _insertAt = null);
+      _focusNode.requestFocus();
+      _scrollToEnd();
+    } else {
+      setState(() => _insertAt = index + 1);
+    }
+  }
+
+  void _cancelInsert(int index) {
+    // A stale field closing after the insert point moved on must not close it.
+    if (_insertAt == index) setState(() => _insertAt = null);
   }
 
   void _reorder(int oldIndex, int newIndex) {
@@ -237,7 +360,21 @@ class _EditChecklistState extends State<EditChecklist> {
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  /// The gap before item [index]: a faint tap target, or the field for typing
+  /// into it. There's none after the last item; the New Item field covers that.
+  Widget _gap(int index) {
+    if (_insertAt == index) {
+      return _InsertField(
+        key: ValueKey('insert-$index'),
+        onSubmitted: (text) => _insertItem(index, text),
+        onCancel: () => _cancelInsert(index),
+      );
+    }
+    return _InsertGap(onTap: () => setState(() => _insertAt = index));
   }
 
   @override
@@ -281,26 +418,35 @@ class _EditChecklistState extends State<EditChecklist> {
                 ),
               Expanded(
                 child: ReorderableListView.builder(
+                  scrollController: _scrollController,
                   buildDefaultDragHandles: false,
                   itemCount: _items.length,
                   onReorderItem: _reorder,
-                  itemBuilder: (context, index) => ListTile(
+                  // Each row carries the gap before it, so the gaps follow
+                  // their items when reordered.
+                  itemBuilder: (context, index) => Column(
                     key: _items[index].key,
-                    leading: ReorderableDragStartListener(
-                      index: index,
-                      child: const Icon(Icons.drag_handle),
-                    ),
-                    title: _EditableTitle(
-                      title: _items[index].title,
-                      onChanged: (title) => _edit(
-                        () => _items[index] = _items[index].withTitle(title),
+                    children: [
+                      _gap(index),
+                      ListTile(
+                        leading: ReorderableDragStartListener(
+                          index: index,
+                          child: const Icon(Icons.drag_handle),
+                        ),
+                        title: _EditableTitle(
+                          title: _items[index].title,
+                          onChanged: (title) => _edit(
+                            () =>
+                                _items[index] = _items[index].withTitle(title),
+                          ),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete),
+                          tooltip: 'Delete',
+                          onPressed: () => _edit(() => _items.removeAt(index)),
+                        ),
                       ),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete),
-                      tooltip: 'Delete',
-                      onPressed: () => _edit(() => _items.removeAt(index)),
-                    ),
+                    ],
                   ),
                 ),
               ),
