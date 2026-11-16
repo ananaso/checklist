@@ -1,6 +1,6 @@
-import 'package:checklist/database/database.dart';
+import 'package:checklist_core/checklist_core.dart';
 import 'package:drift/native.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 /// Renders sections as "List: item, item" strings, in order.
 List<String> shape(List<ChecklistSection> sections) => [

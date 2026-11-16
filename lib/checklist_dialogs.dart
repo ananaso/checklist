@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'database/database.dart';
+import 'package:checklist_core/checklist_core.dart';
 
 /// How to treat lists that inherit from a list being deleted.
 enum _ChildHandling { unlink, copy }
@@ -10,7 +10,7 @@ enum _ChildHandling { unlink, copy }
 /// they keep its items as their own or just lose them.
 Future<bool> deleteChecklistWithConfirmation(
   BuildContext context,
-  AppDatabase database,
+  ChecklistStore database,
   Checklist checklist,
 ) async {
   final children = await database.getChildren(checklist.id);
@@ -79,7 +79,7 @@ Future<bool> deleteChecklistWithConfirmation(
 /// inheritance free of cycles.
 Future<void> editChecklistParents(
   BuildContext context,
-  AppDatabase database,
+  ChecklistStore database,
   Checklist checklist,
 ) async {
   final all = await database.watchChecklists().first;
@@ -255,7 +255,7 @@ class _ParentPickerDialogState extends State<_ParentPickerDialog> {
 /// aren't deleted; they just become ungrouped.
 Future<void> deleteGroupWithConfirmation(
   BuildContext context,
-  AppDatabase database,
+  ChecklistStore database,
   ChecklistGroup group,
 ) async {
   final confirmed = await showDialog<bool>(
@@ -287,7 +287,7 @@ typedef _GroupChoice = ({int? groupId, bool createNew});
 /// and saves the choice.
 Future<void> moveChecklistToGroup(
   BuildContext context,
-  AppDatabase database,
+  ChecklistStore database,
   Checklist checklist,
 ) async {
   final groups = await database.watchGroups().first;
@@ -364,7 +364,7 @@ typedef _SplitChoice = ({
 /// nothing was split.
 Future<String?> splitChecklistWithDialog(
   BuildContext context,
-  AppDatabase database,
+  ChecklistStore database,
   Checklist checklist,
 ) async {
   final items = await database.getChecklistItems(checklist.id);

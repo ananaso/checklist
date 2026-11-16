@@ -1,13 +1,11 @@
-# Step 2: the checklist server. Not built yet; install this once
-# deploy/deploy.sh starts uploading bin/checklist-server.
-
 [Unit]
 Description=Checklist server
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/srv/checklist/bin/checklist-server --listen 127.0.0.1:8090 --database /var/lib/checklist/checklist.sqlite
+# Built and installed into /srv/checklist/server by deploy/deploy.sh.
+ExecStart=/srv/checklist/server/bin/server --listen 127.0.0.1:8090 --database /var/lib/checklist/checklist.sqlite
 
 # Run as a throwaway unprivileged user; the SQLite database in
 # /var/lib/checklist is the only thing it can write.

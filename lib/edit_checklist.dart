@@ -1,4 +1,4 @@
-import 'package:checklist/database/database.dart';
+import 'package:checklist_core/checklist_core.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -229,7 +229,7 @@ class _EditChecklistState extends State<EditChecklist> {
   @override
   void initState() {
     super.initState();
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     // Load both together so the screen rebuilds once, not once per query.
     Future.wait([
       database.watchChecklistSections(widget.checklistId).first,
@@ -377,7 +377,7 @@ class _EditChecklistState extends State<EditChecklist> {
   }
 
   Future<void> _save() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final navigator = Navigator.of(context);
     await _commitPendingEdit();
     // Text typed in the new item field but never submitted still counts.

@@ -7,7 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
-import 'database/database.dart';
+import 'package:checklist_core/checklist_core.dart';
 
 /// Home screen: every checklist in the app. Tap one to open it.
 class ChecklistsScreen extends StatefulWidget {
@@ -18,18 +18,18 @@ class ChecklistsScreen extends StatefulWidget {
 }
 
 class _ChecklistsScreenState extends State<ChecklistsScreen> {
-  late final Stream<List<Checklist>> _checklists = Provider.of<AppDatabase>(
+  late final Stream<List<Checklist>> _checklists = Provider.of<ChecklistStore>(
     context,
     listen: false,
   ).watchChecklists();
 
-  late final Stream<List<ChecklistGroup>> _groups = Provider.of<AppDatabase>(
+  late final Stream<List<ChecklistGroup>> _groups = Provider.of<ChecklistStore>(
     context,
     listen: false,
   ).watchGroups();
 
   Future<void> _createGroup() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final title = await showDialog<String>(
       context: context,
       builder: (context) => const ChecklistNameDialog(
@@ -42,7 +42,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _renameGroup(ChecklistGroup group) async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final title = await showDialog<String>(
       context: context,
       builder: (context) => ChecklistNameDialog(
@@ -56,12 +56,12 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _deleteGroup(ChecklistGroup group) {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     return deleteGroupWithConfirmation(context, database, group);
   }
 
   Future<void> _moveToGroup(Checklist checklist) {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     return moveChecklistToGroup(context, database, checklist);
   }
 
@@ -87,7 +87,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
           ),
         ],
       ),
-      onTap: () => Provider.of<AppDatabase>(
+      onTap: () => Provider.of<ChecklistStore>(
         context,
         listen: false,
       ).setGroupCollapsed(group.id, !group.isCollapsed),
@@ -110,7 +110,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
         tooltip: 'More',
         itemBuilder: (context) => [
           PopupMenuItem(
-            onTap: () => Provider.of<AppDatabase>(
+            onTap: () => Provider.of<ChecklistStore>(
               context,
               listen: false,
             ).setChecklistFavorite(checklist.id, !checklist.isFavorite),
@@ -143,7 +143,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _create() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final navigator = Navigator.of(context);
     final title = await showDialog<String>(
       context: context,
@@ -162,7 +162,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _rename(Checklist checklist) async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final title = await showDialog<String>(
       context: context,
       builder: (context) => ChecklistNameDialog(
@@ -176,12 +176,12 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _delete(Checklist checklist) async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     await deleteChecklistWithConfirmation(context, database, checklist);
   }
 
   Future<void> _editParents(Checklist checklist) {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     return editChecklistParents(context, database, checklist);
   }
 
@@ -192,7 +192,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _export() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     try {
       final json = await database.exportBackup();
       final now = DateTime.now();
@@ -211,7 +211,7 @@ class _ChecklistsScreenState extends State<ChecklistsScreen> {
   }
 
   Future<void> _import() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     try {
       final file = await FilePicker.pickFile(dialogTitle: 'Import checklists');
       if (file == null) return;

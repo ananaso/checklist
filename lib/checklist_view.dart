@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:checklist/database/database.dart';
+import 'package:checklist_core/checklist_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
@@ -40,7 +40,7 @@ class _ChecklistViewState extends State<ChecklistView> {
   static final Map<int, List<ChecklistSection>> _sectionsCache = {};
   static final Map<int, Set<int>> _checkedCache = {};
 
-  late final AppDatabase _database;
+  late final ChecklistStore _database;
   late final ScrollController _scrollController;
   final List<StreamSubscription<void>> _subscriptions = [];
 
@@ -52,7 +52,7 @@ class _ChecklistViewState extends State<ChecklistView> {
   void initState() {
     super.initState();
     final id = widget.checklistId;
-    _database = Provider.of<AppDatabase>(context, listen: false);
+    _database = Provider.of<ChecklistStore>(context, listen: false);
     _sections = _sectionsCache[id];
     _checked = _checkedCache[id];
     _rows = _buildRows();

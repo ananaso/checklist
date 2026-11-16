@@ -1888,10 +1888,11 @@ class $$ChecklistGroupsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (checklistsRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       ChecklistGroup,
                       $ChecklistGroupsTable,
-                      Checklist
+                      Checklist,
+                      $ChecklistsTable
                     >(
                       currentTable: table,
                       referencedTable: $$ChecklistGroupsTableReferences
@@ -1902,8 +1903,8 @@ class $$ChecklistGroupsTableTableManager
                             table,
                             p0,
                           ).checklistsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.groupId == item.id),
+                      currentColumn: 'id',
+                      referencedColumn: 'group_id',
                       typedResults: items,
                     ),
                 ];
@@ -2515,10 +2516,11 @@ class $$ChecklistsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (checklistItemsRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Checklist,
                           $ChecklistsTable,
-                          ChecklistItem
+                          ChecklistItem,
+                          $ChecklistItemsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ChecklistsTableReferences
@@ -2529,17 +2531,16 @@ class $$ChecklistsTableTableManager
                                 table,
                                 p0,
                               ).checklistItemsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.checklistId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'checklist_id',
                           typedResults: items,
                         ),
                       if (parentLinks)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Checklist,
                           $ChecklistsTable,
-                          ChecklistParent
+                          ChecklistParent,
+                          $ChecklistParentsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ChecklistsTableReferences
@@ -2550,17 +2551,16 @@ class $$ChecklistsTableTableManager
                                 table,
                                 p0,
                               ).parentLinks,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.childId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'child_id',
                           typedResults: items,
                         ),
                       if (childLinks)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Checklist,
                           $ChecklistsTable,
-                          ChecklistParent
+                          ChecklistParent,
+                          $ChecklistParentsTable
                         >(
                           currentTable: table,
                           referencedTable: $$ChecklistsTableReferences
@@ -2571,17 +2571,16 @@ class $$ChecklistsTableTableManager
                                 table,
                                 p0,
                               ).childLinks,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.parentId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'parent_id',
                           typedResults: items,
                         ),
                       if (checklistChecksRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           Checklist,
                           $ChecklistsTable,
-                          ChecklistCheck
+                          ChecklistCheck,
+                          $ChecklistChecksTable
                         >(
                           currentTable: table,
                           referencedTable: $$ChecklistsTableReferences
@@ -2592,10 +2591,8 @@ class $$ChecklistsTableTableManager
                                 table,
                                 p0,
                               ).checklistChecksRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.checklistId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'checklist_id',
                           typedResults: items,
                         ),
                     ];
@@ -2998,10 +2995,11 @@ class $$ChecklistItemsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (checklistChecksRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           ChecklistItem,
                           $ChecklistItemsTable,
-                          ChecklistCheck
+                          ChecklistCheck,
+                          $ChecklistChecksTable
                         >(
                           currentTable: table,
                           referencedTable: $$ChecklistItemsTableReferences
@@ -3012,10 +3010,8 @@ class $$ChecklistItemsTableTableManager
                                 table,
                                 p0,
                               ).checklistChecksRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.itemId == item.id,
-                              ),
+                          currentColumn: 'id',
+                          referencedColumn: 'item_id',
                           typedResults: items,
                         ),
                     ];

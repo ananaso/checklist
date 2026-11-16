@@ -1,11 +1,12 @@
-# Restarts checklist-server.service whenever deploy/deploy.sh uploads a new
-# binary, so the deploy user needs no sudo rights.
+# Restarts checklist-server.service after deploy/deploy.sh installs a new
+# build (it writes this stamp file last), so the deploy user needs no sudo
+# rights.
 
 [Unit]
-Description=Restart checklist server when its binary changes
+Description=Restart checklist server after a deploy
 
 [Path]
-PathChanged=/srv/checklist/bin/checklist-server
+PathChanged=/srv/checklist/server/.deployed
 Unit=checklist-server-restart.service
 
 [Install]

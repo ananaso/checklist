@@ -19,11 +19,11 @@ checklist.example.com {
 		copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
 	}
 
-	# Step 2: the checklist server (API + live-update WebSocket). Uncomment
-	# once checklist-server.service is running.
-	# handle /api/* {
-	# 	reverse_proxy 127.0.0.1:8090
-	# }
+	# The checklist server: calls from the app, and the WebSocket that tells
+	# it about changes.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8090
+	}
 
 	# The Flutter web build, uploaded by deploy/deploy.sh.
 	handle {

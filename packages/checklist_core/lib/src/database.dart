@@ -1,11 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:collection/collection.dart';
 import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
 
+import 'checklist_store.dart';
 import 'tables.dart';
 
 part 'database.g.dart';
@@ -30,7 +29,7 @@ class ChecklistSection {
       other is ChecklistSection &&
       other.source == source &&
       other.groupTitle == groupTitle &&
-      listEquals(other.items, items);
+      const ListEquality<ChecklistItem>().equals(other.items, items);
 
   @override
   int get hashCode => Object.hash(source, groupTitle, Object.hashAll(items));
@@ -49,11 +48,13 @@ enum SplitDirection { parent, child }
     ChecklistChecks,
   ],
 ) // , include: {'triggers.drift'}
-class AppDatabase extends _$AppDatabase {
-  // After generating code, this class needs to define a `schemaVersion` getter
-  // and a constructor telling drift where the database should be stored.
-  // These are described in the getting started guide: https://drift.simonbinder.eu/setup/
-  AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
+class AppDatabase extends _$AppDatabase implements ChecklistStore {
+  /// Opens the database on [executor]. With [resetOnOpen], every table is
+  /// dropped and recreated when it opens, for debug runs while iterating on
+  /// the tables.
+  AppDatabase(super.executor, {this.resetOnOpen = false});
+
+  final bool resetOnOpen;
 
   @override
   int get schemaVersion => 3;
@@ -72,9 +73,7 @@ class AppDatabase extends _$AppDatabase {
       },
       beforeOpen: (openingDetails) async {
         await customStatement('PRAGMA foreign_keys = ON');
-        // Opt-in schema reset for debug runs while iterating on the tables:
-        // flutter run --dart-define=RESET_DB=true
-        if (kDebugMode && const bool.fromEnvironment('RESET_DB')) {
+        if (resetOnOpen) {
           final m = Migrator(this);
           for (final table in allTables) {
             await m.deleteTable(table.actualTableName);
@@ -85,36 +84,22 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  static QueryExecutor _openConnection() {
-    return driftDatabase(
-      name: 'app_database',
-      native: const DriftNativeOptions(
-        // By default, `driftDatabase` from `package:drift_flutter` stores the
-        // database files in `getApplicationDocumentsDirectory()`.
-        databaseDirectory: getApplicationSupportDirectory,
-      ),
-      // Both files live in web/ and must match the locked drift and sqlite3
-      // versions; see web/README.md for how to update them.
-      web: DriftWebOptions(
-        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-        driftWorker: Uri.parse('drift_worker.js'),
-      ),
-    );
-  }
-
   /// Creates an empty checklist titled [title].
+  @override
   Future<Checklist> createChecklist(String title) {
     return into(
       checklists,
     ).insertReturning(ChecklistsCompanion.insert(title: title));
   }
 
+  @override
   Future<void> renameChecklist(int id, String title) {
     return (update(checklists)..where((c) => c.id.equals(id))).write(
       ChecklistsCompanion(title: Value(title)),
     );
   }
 
+  @override
   Future<void> setChecklistFavorite(int id, bool isFavorite) {
     return (update(checklists)..where((c) => c.id.equals(id))).write(
       ChecklistsCompanion(isFavorite: Value(isFavorite)),
@@ -122,24 +107,28 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Files a checklist under [groupId], or under no group if null.
+  @override
   Future<void> setChecklistGroup(int id, int? groupId) {
     return (update(checklists)..where((c) => c.id.equals(id))).write(
       ChecklistsCompanion(groupId: Value(groupId)),
     );
   }
 
+  @override
   Future<ChecklistGroup> createGroup(String title) {
     return into(
       checklistGroups,
     ).insertReturning(ChecklistGroupsCompanion.insert(title: title));
   }
 
+  @override
   Future<void> renameGroup(int id, String title) {
     return (update(checklistGroups)..where((g) => g.id.equals(id))).write(
       ChecklistGroupsCompanion(title: Value(title)),
     );
   }
 
+  @override
   Future<void> setGroupCollapsed(int id, bool isCollapsed) {
     return (update(checklistGroups)..where((g) => g.id.equals(id))).write(
       ChecklistGroupsCompanion(isCollapsed: Value(isCollapsed)),
@@ -147,12 +136,14 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Deletes a group; its checklists become ungrouped.
+  @override
   Future<void> deleteGroup(int id) {
     return (delete(checklistGroups)..where((g) => g.id.equals(id))).go();
   }
 
   /// Streams all groups sorted alphabetically by title (ignoring case),
   /// re-emitting on changes.
+  @override
   Stream<List<ChecklistGroup>> watchGroups() {
     return (select(checklistGroups)..orderBy([
           (g) => OrderingTerm.asc(g.title.collate(Collate.noCase)),
@@ -168,6 +159,7 @@ class AppDatabase extends _$AppDatabase {
   /// set: then each child first receives the list's own items as items of its
   /// own, and inherits from the list's parents in its place, so nothing it
   /// showed disappears.
+  @override
   Future<void> deleteChecklist(int id, {bool copyToChildren = false}) {
     return transaction(() async {
       if (copyToChildren) {
@@ -224,6 +216,7 @@ class AppDatabase extends _$AppDatabase {
   /// moved items; lists that inherited from [id] inherit from the new list
   /// instead, so they look the same as before. [id] itself loses the moved
   /// items.
+  @override
   Future<Checklist> splitChecklist(
     int id,
     Set<int> itemIds, {
@@ -287,6 +280,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// The ids of the lists [id] inherits from directly, in order.
+  @override
   Future<List<int>> getChecklistParentIds(int id) async {
     final rows =
         await (select(checklistParents)
@@ -297,6 +291,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Makes [childId] inherit from exactly [parentIds], in the given order.
+  @override
   Future<void> setChecklistParents(int childId, List<int> parentIds) {
     return transaction(() async {
       await (delete(
@@ -333,6 +328,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// The lists that inherit directly from [id], sorted by title.
+  @override
   Future<List<Checklist>> getChildren(int id) {
     final query =
         select(checklists).join([
@@ -350,6 +346,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Every list that inherits from [id], directly or through other lists.
   /// Making [id] inherit from one of these would create a cycle.
+  @override
   Future<Set<int>> getDescendantIds(int id) async {
     final descendants = <int>{};
     var frontier = [id];
@@ -369,6 +366,7 @@ class AppDatabase extends _$AppDatabase {
   /// ancestors first (each list's own ancestors before it, parents in order,
   /// every list once), then [id]'s own items. Re-emits when any list, item, or
   /// link changes, since a base list's edits show up in its children.
+  @override
   Stream<List<ChecklistSection>> watchChecklistSections(int id) {
     late final StreamController<List<ChecklistSection>> controller;
     StreamSubscription<void>? subscription;
@@ -437,6 +435,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Streams all checklists, favorites first, each group sorted alphabetically
   /// by title (ignoring case), re-emitting on changes.
+  @override
   Stream<List<Checklist>> watchChecklists() {
     return (select(checklists)..orderBy([
           (c) => OrderingTerm.desc(c.isFavorite),
@@ -455,6 +454,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Fetches a checklist's items once, in list order.
+  @override
   Future<List<ChecklistItem>> getChecklistItems(int checklistId) {
     return (select(checklistItems)
           ..where((ci) => ci.checklistId.equals(checklistId))
@@ -473,6 +473,7 @@ class AppDatabase extends _$AppDatabase {
   /// Makes a checklist's items exactly [items], in the given order. Entries
   /// with an [id] update that existing item in place, so its checks survive;
   /// entries without one are inserted. Items not listed are deleted.
+  @override
   Future<void> saveChecklistItems(
     int checklistId,
     List<({int? id, String title})> items,
@@ -512,6 +513,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// The ids of the items checked off in [checklistId], once.
+  @override
   Future<Set<int>> getCheckedItemIds(int checklistId) async {
     final rows = await (select(
       checklistChecks,
@@ -521,6 +523,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Streams the ids of the items checked off in [checklistId], re-emitting on
   /// changes.
+  @override
   Stream<Set<int>> watchCheckedItemIds(int checklistId) {
     return (select(checklistChecks)
           ..where((c) => c.checklistId.equals(checklistId)))
@@ -529,6 +532,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Checks or unchecks [itemId] in [checklistId].
+  @override
   Future<void> setItemChecked(int checklistId, int itemId, bool checked) async {
     if (checked) {
       await into(checklistChecks).insertOnConflictUpdate(
@@ -547,6 +551,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Checks exactly [itemIds] in [checklistId], unchecking everything else.
   /// With an empty set this resets the list.
+  @override
   Future<void> setCheckedItemIds(int checklistId, Set<int> itemIds) {
     return transaction(() async {
       await (delete(
@@ -566,6 +571,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Serializes every group, checklist, item, inheritance link and check to a
   /// JSON string that [importBackup] can load back.
+  @override
   Future<String> exportBackup() async {
     final data = {
       'format': _backupFormat,
@@ -591,6 +597,7 @@ class AppDatabase extends _$AppDatabase {
   /// Ids are kept, so links and checks stay intact. Throws a
   /// [FormatException], leaving the data untouched, if [json] isn't a backup
   /// this version can read.
+  @override
   Future<void> importBackup(String json) async {
     final Object? decoded;
     try {

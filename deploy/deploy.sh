@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
-# Builds the checklist app and uploads it to the server.
+# Builds the checklist app and deploys it to the server.
 #
-#   deploy/deploy.sh          build and upload everything
+#   deploy/deploy.sh          deploy the server and the web app
 #   deploy/deploy.sh web      only the web app
-#   deploy/deploy.sh server   only the server binary (once server/ exists)
+#   deploy/deploy.sh server   only the server
 #
-# Uploads go over SSH to $DEPLOY_HOST (an alias in ~/.ssh/config) under
-# $REMOTE_DIR. Caddy serves $REMOTE_DIR/web directly, so a web upload is live
-# immediately; checklist-server-restart.path restarts the server after a
-# binary upload. See deploy/README.md for the one-time server setup.
+# Everything goes over SSH to $DEPLOY_HOST (an alias in ~/.ssh/config) under
+# $REMOTE_DIR:
+#
+#   web/      the Flutter web build, served by Caddy (live immediately)
+#   src/      the server's source, uploaded and compiled on the server
+#   server/   the compiled server; checklist-server-restart.path restarts the
+#             service when a new build lands
+#
+# The server is compiled there, not here, because Dart can't cross-compile a
+# server that bundles SQLite for another architecture. See deploy/README.md
+# for the one-time server setup.
 set -euo pipefail
 
 DEPLOY_HOST="${DEPLOY_HOST:-asahi-deploy}"
 REMOTE_DIR="${REMOTE_DIR:-/srv/checklist}"
+# The Dart SDK on the server.
+REMOTE_DART="${REMOTE_DART:-/opt/dart-sdk/bin/dart}"
 TARGET="${1:-all}"
 
 cd "$(dirname "$0")/.."
@@ -22,23 +31,35 @@ deploy_web() {
   # --no-web-resources-cdn: serve Flutter's rendering engine ourselves rather
   # than loading it from Google's CDN.
   flutter build web --release --no-web-resources-cdn
+  tool/fetch_fallback_fonts.sh build/web/fonts
   echo "==> Uploading web app to $DEPLOY_HOST:$REMOTE_DIR/web/"
-  rsync -rlptvz --delete --chmod=D755,F644 build/web/ "$DEPLOY_HOST:$REMOTE_DIR/web/"
+  rsync -rlptz --delete --chmod=D755,F644 build/web/ "$DEPLOY_HOST:$REMOTE_DIR/web/"
 }
 
 deploy_server() {
-  if [[ ! -d server ]]; then
-    echo "==> No server/ package yet; skipping server"
-    return
-  fi
-  echo "==> Building server for linux-arm64"
-  mkdir -p build/server
-  (cd server && dart compile exe bin/server.dart \
-    --target-os linux --target-arch arm64 -o ../build/server/checklist-server)
-  echo "==> Uploading server to $DEPLOY_HOST:$REMOTE_DIR/bin/"
-  # rsync writes to a temporary file and renames it into place, so the running
-  # server is never left with a half-written binary.
-  rsync -rlptvz --chmod=D755,F755 build/server/checklist-server "$DEPLOY_HOST:$REMOTE_DIR/bin/"
+  echo "==> Uploading server source to $DEPLOY_HOST:$REMOTE_DIR/src/"
+  rsync -rlptz --delete --chmod=D755,F644 \
+    --exclude .dart_tool/ --exclude build/ \
+    --include /packages/ --include /packages/checklist_core/*** \
+    --include /server/*** --exclude '*' \
+    ./ "$DEPLOY_HOST:$REMOTE_DIR/src/"
+
+  echo "==> Building server on $DEPLOY_HOST"
+  # The build goes to a scratch directory first, so a failed build leaves the
+  # running server untouched. The stamp file is written last; the restart
+  # watcher reacts to it.
+  ssh "$DEPLOY_HOST" bash -s -- "$REMOTE_DIR" "$REMOTE_DART" <<'REMOTE'
+set -euo pipefail
+remote_dir="$1"
+dart="$2"
+cd "$remote_dir/src/server"
+"$dart" pub get --enforce-lockfile
+rm -rf "$remote_dir/build"
+"$dart" build cli -o "$remote_dir/build"
+rsync -rlpt --delete "$remote_dir/build/bundle/" "$remote_dir/server/"
+date -Is > "$remote_dir/server/.deployed"
+echo "Server built; it restarts in a moment."
+REMOTE
 }
 
 case "$TARGET" in

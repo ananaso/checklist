@@ -4,7 +4,7 @@ import 'package:checklist/edit_checklist.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
-import 'database/database.dart';
+import 'package:checklist_core/checklist_core.dart';
 
 /// One checklist: its items, with buttons to rename, edit, or delete it.
 class ChecklistScreen extends StatefulWidget {
@@ -20,13 +20,13 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   late String _title = widget.checklist.title;
 
   /// Ids of the checked items, to disable "Uncheck all" when there are none.
-  late final Stream<Set<int>> _checked = Provider.of<AppDatabase>(
+  late final Stream<Set<int>> _checked = Provider.of<ChecklistStore>(
     context,
     listen: false,
   ).watchCheckedItemIds(widget.checklist.id);
 
   Future<void> _rename() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final title = await showDialog<String>(
       context: context,
       builder: (context) => ChecklistNameDialog(
@@ -41,7 +41,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   Future<void> _delete() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final navigator = Navigator.of(context);
     final deleted = await deleteChecklistWithConfirmation(
       context,
@@ -53,7 +53,7 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
 
   /// Unchecks every item, offering to put the checks back.
   Future<void> _uncheckAll() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final messenger = ScaffoldMessenger.of(context);
     final id = widget.checklist.id;
     final previous = await database.getCheckedItemIds(id);
@@ -75,12 +75,12 @@ class _ChecklistScreenState extends State<ChecklistScreen> {
   }
 
   Future<void> _editParents() {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     return editChecklistParents(context, database, widget.checklist);
   }
 
   Future<void> _split() async {
-    final database = Provider.of<AppDatabase>(context, listen: false);
+    final database = Provider.of<ChecklistStore>(context, listen: false);
     final messenger = ScaffoldMessenger.of(context);
     final title = await splitChecklistWithDialog(
       context,
