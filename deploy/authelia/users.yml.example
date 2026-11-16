@@ -1,0 +1,17 @@
+# Copy to /etc/authelia/users.yml on the server (root-only, mode 600; never
+# commit the real file). Generate each password hash with:
+#
+#   authelia crypto hash generate argon2
+#
+# and paste the line starting with $argon2id$ into the password field.
+# Run `sudo systemctl restart authelia` after editing.
+
+users:
+  you:
+    displayname: 'Your Name'
+    password: '$argon2id$v=19$m=65536,t=3,p=4$REPLACE_ME'
+    email: 'you@example.com'
+  partner:
+    displayname: 'Partner Name'
+    password: '$argon2id$v=19$m=65536,t=3,p=4$REPLACE_ME'
+    email: 'partner@example.com'

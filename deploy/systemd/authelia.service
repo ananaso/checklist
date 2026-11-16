@@ -1,0 +1,33 @@
+[Unit]
+Description=Authelia login service for checklist
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/authelia --config /etc/authelia/configuration.yml
+
+# Secrets and the user list live in root-only files under /etc/authelia;
+# systemd hands the service read-only copies.
+LoadCredential=users:/etc/authelia/users.yml
+LoadCredential=jwt_secret:/etc/authelia/secrets/jwt_secret
+LoadCredential=session_secret:/etc/authelia/secrets/session_secret
+LoadCredential=storage_key:/etc/authelia/secrets/storage_key
+Environment=AUTHELIA_AUTHENTICATION_BACKEND_FILE_PATH=%d/users
+Environment=AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=%d/jwt_secret
+Environment=AUTHELIA_SESSION_SECRET_FILE=%d/session_secret
+Environment=AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=%d/storage_key
+
+# Run as a throwaway unprivileged user; /var/lib/authelia is its only
+# writable directory.
+DynamicUser=yes
+StateDirectory=authelia
+StateDirectoryMode=0700
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

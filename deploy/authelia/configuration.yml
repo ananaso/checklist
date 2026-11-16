@@ -1,0 +1,63 @@
+# Authelia configuration for the checklist app.
+#
+# Install as /etc/authelia/configuration.yml and replace example.com with your
+# domain. Secrets are not stored here: authelia.service loads them from
+# /etc/authelia/secrets/ (see deploy/README.md).
+#
+# Check it with: authelia validate-config --config /etc/authelia/configuration.yml
+
+server:
+  # Only Caddy talks to Authelia.
+  address: 'tcp://127.0.0.1:9091/'
+
+log:
+  level: 'info'
+
+theme: 'auto'
+
+authentication_backend:
+  file:
+    # Users and their argon2 password hashes; see users.yml.example. The
+    # real path comes from authelia.service, which hands Authelia a copy of
+    # /etc/authelia/users.yml.
+    path: '/etc/authelia/users.yml'
+  password_reset:
+    # No email server, so passwords are reset by editing users.yml.
+    disable: true
+
+access_control:
+  default_policy: 'deny'
+  rules:
+    - domain: 'checklist.example.com'
+      # Password only. Switch to 'two_factor' to require a TOTP app or
+      # passkey as well; codes for setting those up are written to the
+      # notifier file below.
+      policy: 'one_factor'
+
+session:
+  cookies:
+    - domain: 'example.com'
+      authelia_url: 'https://auth.example.com'
+      default_redirection_url: 'https://checklist.example.com'
+      # Without "Remember me", log out after a day of inactivity.
+      inactivity: '1d'
+      expiration: '1w'
+      # With "Remember me" ticked, stay logged in for 3 months. Tick it when
+      # logging in from the Home Screen app.
+      remember_me: '3M'
+
+# Lock an account out after repeated wrong passwords.
+regulation:
+  max_retries: 5
+  find_time: '10m'
+  ban_time: '1h'
+
+storage:
+  local:
+    path: '/var/lib/authelia/db.sqlite3'
+
+# Authelia needs somewhere to send one-time codes (e.g. when registering a
+# second factor). Without an email server, they are written to this file.
+notifier:
+  filesystem:
+    filename: '/var/lib/authelia/notification.txt'

@@ -2,16 +2,9 @@
 
 Create checklists to help you remember things you need to do, repeatedly
 
-## Getting Started
+## Platforms
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- **Android:** `flutter run` / `flutter build apk`.
+- **Web:** `flutter build web --release --no-web-resources-cdn`. Hosting on the
+  home server (Caddy + Authelia login) is described in
+  [deploy/README.md](deploy/README.md); `deploy/deploy.sh` builds and uploads.

@@ -1,0 +1,12 @@
+# Restarts checklist-server.service whenever deploy/deploy.sh uploads a new
+# binary, so the deploy user needs no sudo rights.
+
+[Unit]
+Description=Restart checklist server when its binary changes
+
+[Path]
+PathChanged=/srv/checklist/bin/checklist-server
+Unit=checklist-server-restart.service
+
+[Install]
+WantedBy=multi-user.target

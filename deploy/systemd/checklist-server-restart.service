@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart checklist server after a deploy
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl restart checklist-server.service
